@@ -173,9 +173,9 @@ export function buildClusteredNetwork(
   const departmentMap = createDepartmentClusters(allUsers, currentUser.userId);
   const departments = Array.from(departmentMap.keys());
 
-  // Node dimensions for spacing calculation
-  const NODE_WIDTH = 160; // 140px + 20px padding
-  const NODE_HEIGHT = 100; // estimated height + padding
+  // Node dimensions for spacing calculation (increased for better readability)
+  const NODE_WIDTH = 200; // 140px + 60px padding
+  const NODE_HEIGHT = 130; // estimated height + padding
 
   // Calculate grid layout for clusters
   const clusterCount = departments.length;
