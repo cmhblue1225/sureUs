@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useSidebar } from "./SidebarContext";
 
 const navigation = [
   { name: "대시보드", href: "/dashboard", icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isCollapsed } = useSidebar();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -38,47 +40,67 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex h-full w-64 flex-col bg-card border-r">
+    <div
+      className={cn(
+        "flex h-full flex-col bg-card border-r transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center px-6 border-b">
+      <div className={cn(
+        "flex h-16 items-center border-b",
+        isCollapsed ? "justify-center px-2" : "px-6"
+      )}>
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Network className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl">sureNet</span>
+          {!isCollapsed && <span className="font-bold text-xl">sureNet</span>}
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className={cn(
+        "flex-1 py-4 space-y-1",
+        isCollapsed ? "px-2" : "px-3"
+      )}>
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.name}
               href={item.href}
+              title={isCollapsed ? item.name : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "flex items-center gap-3 py-2 text-sm font-medium rounded-md transition-colors",
+                isCollapsed ? "justify-center px-2" : "px-3",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
-              <item.icon className="w-5 h-5" />
-              {item.name}
+              <item.icon className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && <span>{item.name}</span>}
             </Link>
           );
         })}
       </nav>
 
       {/* Logout button */}
-      <div className="p-3 border-t">
+      <div className={cn(
+        "border-t",
+        isCollapsed ? "p-2" : "p-3"
+      )}>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+          title={isCollapsed ? "로그아웃" : undefined}
+          className={cn(
+            "flex items-center gap-3 py-2 w-full text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors",
+            isCollapsed ? "justify-center px-2" : "px-3"
+          )}
         >
-          <LogOut className="w-5 h-5" />
-          로그아웃
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && <span>로그아웃</span>}
         </button>
       </div>
     </div>

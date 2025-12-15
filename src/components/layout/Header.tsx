@@ -1,8 +1,9 @@
 "use client";
 
-import { User } from "lucide-react";
+import { User, Menu } from "lucide-react";
 import Link from "next/link";
 import { NotificationBell } from "./NotificationBell";
+import { useSidebar } from "./SidebarContext";
 
 interface HeaderProps {
   userName?: string;
@@ -10,10 +11,18 @@ interface HeaderProps {
 }
 
 export function Header({ userName, avatarUrl }: HeaderProps) {
+  const { toggle } = useSidebar();
+
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
-      <div>
-        {/* Page title or breadcrumbs can go here */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggle}
+          className="p-2 rounded-md hover:bg-accent transition-colors"
+          aria-label="메뉴 토글"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="flex items-center gap-4">
