@@ -189,7 +189,7 @@ export async function POST(request: Request) {
         join_policy: joinPolicy || "public",
         leader_id: user.id,
         tags: tags || [],
-        member_count: 1,
+        member_count: 0, // 트리거가 회원 추가 시 자동 증가
       })
       .select()
       .single();

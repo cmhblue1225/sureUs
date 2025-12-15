@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, Image as ImageIcon, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import ClubHeader from "@/components/clubs/ClubHeader";
 import ClubTabs from "@/components/clubs/ClubTabs";
@@ -15,33 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-
-interface ClubDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  join_policy: string;
-  leader_id: string;
-  member_count: number;
-  tags: string[];
-  created_at: string;
-  leader?: {
-    id: string;
-    name: string;
-    avatar_url: string | null;
-  };
-  isMember: boolean;
-  isLeader: boolean;
-  memberRole: string | null;
-  memberSince: string | null;
-  hasPendingRequest: boolean;
-  pendingRequestId: string | null;
-  pendingRequestsCount: number;
-  recentMembers: unknown[];
-  recentPostsCount: number;
-}
+import { useClub } from "@/contexts/ClubContext";
 
 interface GalleryPost {
   id: string;
@@ -61,59 +34,27 @@ export default function ClubGalleryPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
-  const router = useRouter();
   const { toast } = useToast();
+  const { club, isLoading: clubLoading } = useClub();
 
-  const [club, setClub] = useState<ClubDetail | null>(null);
   const [posts, setPosts] = useState<GalleryPost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingGallery, setIsLoadingGallery] = useState(true);
   const [showUploader, setShowUploader] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [allImages, setAllImages] = useState<{ url: string; postTitle: string }[]>([]);
 
   useEffect(() => {
-    fetchClubAndGallery();
-  }, [resolvedParams.id]);
-
-  const fetchClubAndGallery = async () => {
-    try {
-      setIsLoading(true);
-
-      // Fetch club detail
-      const clubResponse = await fetch(`/api/clubs/${resolvedParams.id}`);
-      const clubResult = await clubResponse.json();
-
-      if (!clubResult.success) {
-        toast({
-          title: "오류",
-          description: clubResult.error || "동호회를 불러올 수 없습니다.",
-          variant: "destructive",
-        });
-        router.push("/clubs");
-        return;
-      }
-
-      setClub(clubResult.data);
-
-      // Only fetch gallery if member
-      if (clubResult.data.isMember) {
-        await fetchGalleryPosts();
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast({
-        title: "오류",
-        description: "데이터를 불러올 수 없습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (club?.isMember) {
+      fetchGalleryPosts();
+    } else if (club && !club.isMember) {
+      setIsLoadingGallery(false);
     }
-  };
+  }, [club?.id, club?.isMember]);
 
   const fetchGalleryPosts = async () => {
     try {
+      setIsLoadingGallery(true);
       const response = await fetch(
         `/api/clubs/${resolvedParams.id}/posts?type=gallery&limit=100`
       );
@@ -133,6 +74,8 @@ export default function ClubGalleryPage({
       }
     } catch (error) {
       console.error("Gallery fetch error:", error);
+    } finally {
+      setIsLoadingGallery(false);
     }
   };
 
@@ -196,7 +139,7 @@ export default function ClubGalleryPage({
     }
   };
 
-  if (isLoading) {
+  if (clubLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -265,7 +208,11 @@ export default function ClubGalleryPage({
           )}
 
           {/* Gallery Grid */}
-          {allImages.length > 0 ? (
+          {isLoadingGallery ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : allImages.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {allImages.map((image, index) => (
                 <div

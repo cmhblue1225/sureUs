@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useClub } from "@/contexts/ClubContext";
 
 interface Post {
   id: string;
@@ -31,33 +32,6 @@ interface Post {
   isAuthor: boolean;
 }
 
-interface ClubDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  join_policy: string;
-  leader_id: string;
-  member_count: number;
-  tags: string[];
-  created_at: string;
-  leader?: {
-    id: string;
-    name: string;
-    avatar_url: string | null;
-  };
-  isMember: boolean;
-  isLeader: boolean;
-  memberRole: string | null;
-  memberSince: string | null;
-  hasPendingRequest: boolean;
-  pendingRequestId: string | null;
-  pendingRequestsCount: number;
-  recentMembers: unknown[];
-  recentPostsCount: number;
-}
-
 interface Pagination {
   page: number;
   limit: number;
@@ -69,7 +43,7 @@ export default function ClubPostsPage({ params }: { params: Promise<{ id: string
   const resolvedParams = use(params);
   const router = useRouter();
   const { toast } = useToast();
-  const [club, setClub] = useState<ClubDetail | null>(null);
+  const { club, isLoading: clubLoading } = useClub();
   const [posts, setPosts] = useState<Post[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [pagination, setPagination] = useState<Pagination>({
@@ -78,59 +52,29 @@ export default function ClubPostsPage({ params }: { params: Promise<{ id: string
     total: 0,
     hasMore: false,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetchClubAndPosts();
-  }, [resolvedParams.id]);
+    if (club?.isMember) {
+      fetchPosts(1, typeFilter);
+    } else if (club && !club.isMember) {
+      setIsLoadingPosts(false);
+    }
+  }, [club?.id, club?.isMember]);
 
   useEffect(() => {
     if (club?.isMember) {
       fetchPosts(1, typeFilter);
     }
-  }, [typeFilter, club?.isMember]);
-
-  const fetchClubAndPosts = async () => {
-    try {
-      setIsLoading(true);
-
-      // Fetch club detail
-      const clubResponse = await fetch(`/api/clubs/${resolvedParams.id}`);
-      const clubResult = await clubResponse.json();
-
-      if (!clubResult.success) {
-        toast({
-          title: "오류",
-          description: clubResult.error || "동호회를 불러올 수 없습니다.",
-          variant: "destructive",
-        });
-        router.push("/clubs");
-        return;
-      }
-
-      setClub(clubResult.data);
-
-      // Only fetch posts if member
-      if (clubResult.data.isMember) {
-        await fetchPosts(1, typeFilter);
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast({
-        title: "오류",
-        description: "데이터를 불러올 수 없습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [typeFilter]);
 
   const fetchPosts = async (page: number, type: string, append: boolean = false) => {
     try {
       if (append) {
         setIsLoadingMore(true);
+      } else {
+        setIsLoadingPosts(true);
       }
 
       const typeParam = type !== "all" ? `&type=${type}` : "";
@@ -157,6 +101,7 @@ export default function ClubPostsPage({ params }: { params: Promise<{ id: string
     } catch (error) {
       console.error("Posts fetch error:", error);
     } finally {
+      setIsLoadingPosts(false);
       setIsLoadingMore(false);
     }
   };
@@ -236,7 +181,7 @@ export default function ClubPostsPage({ params }: { params: Promise<{ id: string
     }
   };
 
-  if (isLoading) {
+  if (clubLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -315,7 +260,11 @@ export default function ClubPostsPage({ params }: { params: Promise<{ id: string
             </TabsList>
           </Tabs>
 
-          {posts.length > 0 ? (
+          {isLoadingPosts ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : posts.length > 0 ? (
             <div className="space-y-3">
               {posts.map((post) => (
                 <PostCard

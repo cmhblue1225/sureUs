@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import ClubHeader from "@/components/clubs/ClubHeader";
 import ClubTabs from "@/components/clubs/ClubTabs";
@@ -9,7 +8,7 @@ import ClubMemberList from "@/components/clubs/ClubMemberList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { useClub } from "@/contexts/ClubContext";
 
 interface Member {
   id: string;
@@ -28,33 +27,6 @@ interface Member {
   } | null;
 }
 
-interface ClubDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  join_policy: string;
-  leader_id: string;
-  member_count: number;
-  tags: string[];
-  created_at: string;
-  leader?: {
-    id: string;
-    name: string;
-    avatar_url: string | null;
-  };
-  isMember: boolean;
-  isLeader: boolean;
-  memberRole: string | null;
-  memberSince: string | null;
-  hasPendingRequest: boolean;
-  pendingRequestId: string | null;
-  pendingRequestsCount: number;
-  recentMembers: unknown[];
-  recentPostsCount: number;
-}
-
 interface Pagination {
   page: number;
   limit: number;
@@ -64,9 +36,8 @@ interface Pagination {
 
 export default function ClubMembersPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const router = useRouter();
   const { toast } = useToast();
-  const [club, setClub] = useState<ClubDetail | null>(null);
+  const { club, isLoading: clubLoading, currentUserId, updateMemberCount } = useClub();
   const [members, setMembers] = useState<Member[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -74,63 +45,21 @@ export default function ClubMembersPage({ params }: { params: Promise<{ id: stri
     total: 0,
     hasMore: false,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-    };
-    fetchCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    fetchClubAndMembers();
-  }, [resolvedParams.id]);
-
-  const fetchClubAndMembers = async () => {
-    try {
-      setIsLoading(true);
-
-      // Fetch club detail
-      const clubResponse = await fetch(`/api/clubs/${resolvedParams.id}`);
-      const clubResult = await clubResponse.json();
-
-      if (!clubResult.success) {
-        toast({
-          title: "오류",
-          description: clubResult.error || "동호회를 불러올 수 없습니다.",
-          variant: "destructive",
-        });
-        router.push("/clubs");
-        return;
-      }
-
-      setClub(clubResult.data);
-
-      // Fetch members
-      await fetchMembers(1);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast({
-        title: "오류",
-        description: "데이터를 불러올 수 없습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (club) {
+      fetchMembers(1);
     }
-  };
+  }, [club?.id]);
 
   const fetchMembers = async (page: number, append: boolean = false) => {
     try {
       if (append) {
         setIsLoadingMore(true);
+      } else {
+        setIsLoadingMembers(true);
       }
 
       const response = await fetch(
@@ -156,6 +85,7 @@ export default function ClubMembersPage({ params }: { params: Promise<{ id: stri
     } catch (error) {
       console.error("Members fetch error:", error);
     } finally {
+      setIsLoadingMembers(false);
       setIsLoadingMore(false);
     }
   };
@@ -186,11 +116,8 @@ export default function ClubMembersPage({ params }: { params: Promise<{ id: stri
 
       // Refresh members list
       await fetchMembers(1);
-
       // Update club member count
-      if (club) {
-        setClub({ ...club, member_count: club.member_count - 1 });
-      }
+      updateMemberCount(-1);
     } catch (error) {
       console.error("Kick error:", error);
       toast({
@@ -207,7 +134,7 @@ export default function ClubMembersPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (isLoading) {
+  if (clubLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -241,30 +168,38 @@ export default function ClubMembersPage({ params }: { params: Promise<{ id: stri
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ClubMemberList
-            members={members}
-            isLeader={club.isLeader}
-            currentUserId={currentUserId || ""}
-            onKick={handleKick}
-          />
-
-          {pagination.hasMore && (
-            <div className="mt-4 text-center">
-              <Button
-                variant="outline"
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-              >
-                {isLoadingMore ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    로딩 중...
-                  </>
-                ) : (
-                  "더 보기"
-                )}
-              </Button>
+          {isLoadingMembers ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : (
+            <>
+              <ClubMemberList
+                members={members}
+                isLeader={club.isLeader}
+                currentUserId={currentUserId || ""}
+                onKick={handleKick}
+              />
+
+              {pagination.hasMore && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        로딩 중...
+                      </>
+                    ) : (
+                      "더 보기"
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

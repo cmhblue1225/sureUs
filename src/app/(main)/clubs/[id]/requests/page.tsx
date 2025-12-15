@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useClub } from "@/contexts/ClubContext";
 
 interface JoinRequest {
   id: string;
@@ -29,72 +30,19 @@ interface JoinRequest {
   } | null;
 }
 
-interface ClubDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  join_policy: string;
-  leader_id: string;
-  member_count: number;
-  tags: string[];
-  created_at: string;
-  leader?: {
-    id: string;
-    name: string;
-    avatar_url: string | null;
-  };
-  isMember: boolean;
-  isLeader: boolean;
-  memberRole: string | null;
-  memberSince: string | null;
-  hasPendingRequest: boolean;
-  pendingRequestId: string | null;
-  pendingRequestsCount: number;
-  recentMembers: unknown[];
-  recentPostsCount: number;
-}
-
 export default function ClubRequestsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { toast } = useToast();
-  const [club, setClub] = useState<ClubDetail | null>(null);
+  const { club, isLoading: clubLoading, refreshClub, updateMemberCount } = useClub();
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    fetchClubDetail();
-  }, [resolvedParams.id]);
-
-  useEffect(() => {
-    if (club?.isLeader) {
-      fetchRequests(statusFilter);
-    }
-  }, [club, statusFilter]);
-
-  const fetchClubDetail = async () => {
-    try {
-      setIsLoading(true);
-
-      const response = await fetch(`/api/clubs/${resolvedParams.id}`);
-      const result = await response.json();
-
-      if (!result.success) {
-        toast({
-          title: "오류",
-          description: result.error || "동호회를 불러올 수 없습니다.",
-          variant: "destructive",
-        });
-        router.push("/clubs");
-        return;
-      }
-
-      // Check if user is leader
-      if (!result.data.isLeader) {
+    if (club) {
+      if (!club.isLeader) {
         toast({
           title: "접근 불가",
           description: "회장만 가입 신청을 관리할 수 있습니다.",
@@ -103,19 +51,16 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
         router.push(`/clubs/${resolvedParams.id}`);
         return;
       }
-
-      setClub(result.data);
-    } catch (error) {
-      console.error("Club fetch error:", error);
-      toast({
-        title: "오류",
-        description: "동호회를 불러올 수 없습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      setPendingCount(club.pendingRequestsCount);
+      fetchRequests(statusFilter);
     }
-  };
+  }, [club?.id, club?.isLeader]);
+
+  useEffect(() => {
+    if (club?.isLeader) {
+      fetchRequests(statusFilter);
+    }
+  }, [statusFilter]);
 
   const fetchRequests = async (status: string) => {
     try {
@@ -173,15 +118,8 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
 
       // Remove from current list
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
-
-      // Update club member count
-      if (club) {
-        setClub({
-          ...club,
-          member_count: club.member_count + 1,
-          pendingRequestsCount: Math.max(0, club.pendingRequestsCount - 1),
-        });
-      }
+      setPendingCount((prev) => Math.max(0, prev - 1));
+      updateMemberCount(1);
     } catch (error) {
       console.error("Approve error:", error);
       toast({
@@ -222,14 +160,7 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
 
       // Remove from current list
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
-
-      // Update pending count
-      if (club) {
-        setClub({
-          ...club,
-          pendingRequestsCount: Math.max(0, club.pendingRequestsCount - 1),
-        });
-      }
+      setPendingCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Reject error:", error);
       toast({
@@ -240,7 +171,7 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  if (isLoading) {
+  if (clubLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -264,7 +195,7 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
         clubId={club.id}
         isMember={club.isMember}
         isLeader={club.isLeader}
-        pendingRequestsCount={club.pendingRequestsCount}
+        pendingRequestsCount={pendingCount}
       />
 
       <Card>
@@ -284,7 +215,7 @@ export default function ClubRequestsPage({ params }: { params: Promise<{ id: str
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
             <TabsList className="mb-4">
               <TabsTrigger value="pending">
-                대기 중 {club.pendingRequestsCount > 0 && `(${club.pendingRequestsCount})`}
+                대기 중 {pendingCount > 0 && `(${pendingCount})`}
               </TabsTrigger>
               <TabsTrigger value="approved">승인됨</TabsTrigger>
               <TabsTrigger value="rejected">거절됨</TabsTrigger>

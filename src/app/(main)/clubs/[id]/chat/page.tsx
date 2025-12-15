@@ -1,94 +1,14 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import ClubHeader from "@/components/clubs/ClubHeader";
 import ClubTabs from "@/components/clubs/ClubTabs";
 import ClubChat from "@/components/clubs/ClubChat";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { useClub } from "@/contexts/ClubContext";
 
-interface ClubDetail {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  join_policy: string;
-  leader_id: string;
-  member_count: number;
-  tags: string[];
-  created_at: string;
-  leader?: {
-    id: string;
-    name: string;
-    avatar_url: string | null;
-  };
-  isMember: boolean;
-  isLeader: boolean;
-  memberRole: string | null;
-  memberSince: string | null;
-  hasPendingRequest: boolean;
-  pendingRequestId: string | null;
-  pendingRequestsCount: number;
-  recentMembers: unknown[];
-  recentPostsCount: number;
-}
-
-export default function ClubChatPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const router = useRouter();
-  const { toast } = useToast();
-  const [club, setClub] = useState<ClubDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-    };
-    fetchCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    fetchClubDetail();
-  }, [resolvedParams.id]);
-
-  const fetchClubDetail = async () => {
-    try {
-      setIsLoading(true);
-
-      const response = await fetch(`/api/clubs/${resolvedParams.id}`);
-      const result = await response.json();
-
-      if (!result.success) {
-        toast({
-          title: "오류",
-          description: result.error || "동호회를 불러올 수 없습니다.",
-          variant: "destructive",
-        });
-        router.push("/clubs");
-        return;
-      }
-
-      setClub(result.data);
-    } catch (error) {
-      console.error("Club fetch error:", error);
-      toast({
-        title: "오류",
-        description: "동호회를 불러올 수 없습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function ClubChatPage() {
+  const { club, isLoading, currentUserId } = useClub();
 
   if (isLoading) {
     return (
