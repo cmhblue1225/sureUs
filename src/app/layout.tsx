@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "sureNet - 사내 네트워킹 서비스",
+  title: "sureUs - 사내 네트워킹 서비스",
   description: "사내 인원 네트워킹 & 유사도 기반 매칭 서비스",
 };
 

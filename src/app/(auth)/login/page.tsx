@@ -49,7 +49,7 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">sureNet</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center">sureUs</CardTitle>
         <CardDescription className="text-center">
           사내 네트워킹 서비스에 로그인하세요
         </CardDescription>

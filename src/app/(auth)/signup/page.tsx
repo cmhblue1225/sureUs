@@ -144,7 +144,7 @@ export default function SignupPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">회원가입</CardTitle>
         <CardDescription className="text-center">
-          sureNet에 가입하여 동료들과 연결하세요
+          sureUs에 가입하여 동료들과 연결하세요
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSignup}>

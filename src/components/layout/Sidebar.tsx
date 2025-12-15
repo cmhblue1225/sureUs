@@ -55,7 +55,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Network className="w-5 h-5 text-primary-foreground" />
           </div>
-          {!isCollapsed && <span className="font-bold text-xl">sureNet</span>}
+          {!isCollapsed && <span className="font-bold text-xl">sureUs</span>}
         </Link>
       </div>
 
