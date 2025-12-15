@@ -9,6 +9,21 @@ type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
 type PreferencesRow = Database["public"]["Tables"]["preferences"]["Row"];
 type ProfileWithUser = ProfileRow & { users: { id: string; name: string; avatar_url: string | null } };
 
+// Helper to parse embedding that may be stored as JSON string or already an array
+function parseEmbedding(embedding: unknown): number[] | undefined {
+  if (!embedding) return undefined;
+  if (Array.isArray(embedding)) return embedding;
+  if (typeof embedding === "string") {
+    try {
+      const parsed = JSON.parse(embedding);
+      return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -138,10 +153,10 @@ export async function GET(request: Request) {
       officeLocation: userProfile.office_location,
       mbti: userProfile.mbti || undefined,
       hobbies: userTags?.map((t: { tag_name: string }) => t.tag_name) || [],
-      embedding: userEmbedding?.combined_embedding as number[] | undefined,
-      collaborationStyleEmbedding: userEmbedding?.collaboration_style_embedding as number[] | undefined,
-      strengthsEmbedding: userEmbedding?.strengths_embedding as number[] | undefined,
-      preferredPeopleTypeEmbedding: userEmbedding?.preferred_people_type_embedding as number[] | undefined,
+      embedding: parseEmbedding(userEmbedding?.combined_embedding),
+      collaborationStyleEmbedding: parseEmbedding(userEmbedding?.collaboration_style_embedding),
+      strengthsEmbedding: parseEmbedding(userEmbedding?.strengths_embedding),
+      preferredPeopleTypeEmbedding: parseEmbedding(userEmbedding?.preferred_people_type_embedding),
     };
 
     // Calculate scores for each candidate
@@ -158,10 +173,10 @@ export async function GET(request: Request) {
         mbti: profile.mbti || undefined,
         avatarUrl: candidateUser.avatar_url || undefined,
         hobbies: tagsByProfileId.get(profile.id) || [],
-        embedding: embedding?.combined_embedding as number[] | undefined,
-        collaborationStyleEmbedding: embedding?.collaboration_style_embedding as number[] | undefined,
-        strengthsEmbedding: embedding?.strengths_embedding as number[] | undefined,
-        preferredPeopleTypeEmbedding: embedding?.preferred_people_type_embedding as number[] | undefined,
+        embedding: parseEmbedding(embedding?.combined_embedding),
+        collaborationStyleEmbedding: parseEmbedding(embedding?.collaboration_style_embedding),
+        strengthsEmbedding: parseEmbedding(embedding?.strengths_embedding),
+        preferredPeopleTypeEmbedding: parseEmbedding(embedding?.preferred_people_type_embedding),
       };
 
       // Respect visibility - only use public/department visible data for matching

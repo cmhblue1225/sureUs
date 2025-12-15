@@ -4,6 +4,44 @@ import type { Database } from "@/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
+// GET /api/user - Get current user info
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "인증이 필요합니다." },
+        { status: 401 }
+      );
+    }
+
+    // Get user data from users table
+    const { data: userData } = await supabase
+      .from("users")
+      .select("id, email, name, avatar_url")
+      .eq("id", user.id)
+      .single<{ id: string; email: string; name: string; avatar_url?: string }>();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: userData?.name || user.email?.split("@")[0],
+        avatarUrl: userData?.avatar_url,
+      },
+    });
+  } catch (error) {
+    console.error("User GET API error:", error);
+    return NextResponse.json(
+      { success: false, error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/user - Delete user and all data
 export async function DELETE(request: Request) {
   try {
