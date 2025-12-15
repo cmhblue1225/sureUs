@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClubCard } from "@/components/clubs/ClubCard";
+import ClubRecommendations from "@/components/clubs/ClubRecommendations";
 import { Plus, Search, Loader2, Users, Filter } from "lucide-react";
 
 interface Club {
@@ -155,6 +156,11 @@ export default function ClubsPage() {
           동호회 만들기
         </Button>
       </div>
+
+      {/* Recommendations - Show when not filtering */}
+      {!myClubs && category === "all" && !search && (
+        <ClubRecommendations limit={3} compact />
+      )}
 
       {/* Filters */}
       <Card>

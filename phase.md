@@ -1,8 +1,8 @@
 # sureNet 개발 진행 현황
 
-> 마지막 업데이트: 2025-12-15
+> 마지막 업데이트: 2025-12-16
 
-## 현재 Phase: 7 (동호회 기능 구현)
+## 현재 Phase: 7 완료 (동호회 기능 구현)
 
 ---
 
@@ -158,11 +158,12 @@
 | 2025-12-15 | 6 | 알고리즘 고도화 시작 |
 | 2025-12-15 | 6 | 7컴포넌트 점수 알고리즘, 클러스터링, 인터랙티브 시각화 완료 |
 | 2025-12-15 | 7 | 동호회 기능 구현 시작 |
+| 2025-12-16 | 7 | 투표 기능, 갤러리 기능, 추천 알고리즘, LLM 통합 완료 |
 
 ---
 
 ## Phase 7: 동호회(Club) 기능 구현
-**상태: 진행 중**
+**상태: 완료**
 
 ### 7-1. 데이터베이스 스키마
 | 작업 | 상태 | 파일/설명 |
@@ -215,10 +216,36 @@
 | 채팅 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/chat/page.tsx` |
 | Supabase Realtime 구독 | ✅ 완료 | WebSocket 실시간 메시지 |
 
-### 7-6. 추가 기능 (예정)
-| 작업 | 상태 | 설명 |
+### 7-6. 투표 기능
+| 작업 | 상태 | 파일 |
 |------|------|------|
-| 투표 기능 | ⏳ 대기 | 투표 생성/참여 UI |
-| 갤러리 기능 | ⏳ 대기 | 이미지 업로드/표시 |
-| 동호회 추천 알고리즘 | ⏳ 대기 | 그래프 기반 유사도 |
-| LLM 통합 | ⏳ 대기 | Anthropic API |
+| 투표 참여 API | ✅ 완료 | `src/app/api/clubs/[id]/posts/[postId]/vote/route.ts` |
+| PollCard 컴포넌트 | ✅ 완료 | `src/components/clubs/PollCard.tsx` |
+| 게시물 작성 (투표 포함) | ✅ 완료 | `src/app/(main)/clubs/[id]/posts/new/page.tsx` |
+| 게시물 상세 (투표 표시) | ✅ 완료 | `src/app/(main)/clubs/[id]/posts/[postId]/page.tsx` |
+
+### 7-7. 갤러리 기능
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| club-images Storage 버킷 | ✅ 완료 | Supabase MCP |
+| 이미지 업로드 API | ✅ 완료 | `src/app/api/clubs/[id]/images/route.ts` |
+| ImageUploader 컴포넌트 | ✅ 완료 | `src/components/clubs/ImageUploader.tsx` |
+| 갤러리 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/gallery/page.tsx` |
+
+### 7-8. 동호회 추천 알고리즘
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 5요소 추천 알고리즘 | ✅ 완료 | `src/lib/clubs/recommendationAlgorithm.ts` |
+| 추천 API | ✅ 완료 | `src/app/api/clubs/recommendations/route.ts` |
+| ClubRecommendations 컴포넌트 | ✅ 완료 | `src/components/clubs/ClubRecommendations.tsx` |
+| 동호회 목록 추천 통합 | ✅ 완료 | `src/app/(main)/clubs/page.tsx` |
+
+### 7-9. LLM 통합 (Anthropic)
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Anthropic 클라이언트 | ✅ 완료 | `src/lib/anthropic/client.ts` |
+| 동호회 설명 생성 API | ✅ 완료 | `src/app/api/clubs/[id]/generate-description/route.ts` |
+| 활동 요약 API | ✅ 완료 | `src/app/api/clubs/[id]/activity-summary/route.ts` |
+| 추천 이유 설명 API | ✅ 완료 | `src/app/api/clubs/recommendations/explain/route.ts` |
+
+> **참고**: LLM 기능 사용을 위해 `ANTHROPIC_API_KEY` 환경변수 설정 필요
