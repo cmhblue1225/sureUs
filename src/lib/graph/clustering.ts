@@ -12,7 +12,6 @@ import {
   DEFAULT_ENHANCED_WEIGHTS,
 } from "@/lib/matching/enhancedAlgorithm";
 import { hasHighSynergy } from "@/lib/matching/departmentScoring";
-import { applyForceLayout } from "./layout";
 
 // Cluster color palette
 const CLUSTER_COLORS: Record<string, string> = {
@@ -174,34 +173,48 @@ export function buildClusteredNetwork(
   const departmentMap = createDepartmentClusters(allUsers, currentUser.userId);
   const departments = Array.from(departmentMap.keys());
 
-  // Calculate dynamic canvas size based on node count
-  const totalNodes = allUsers.length;
-  const dynamicWidth = Math.max(canvasSize.width, 800 + Math.floor(totalNodes / 10) * 200);
-  const dynamicHeight = Math.max(canvasSize.height, 600 + Math.floor(totalNodes / 10) * 150);
+  // Node dimensions for spacing calculation
+  const NODE_WIDTH = 160; // 140px + 20px padding
+  const NODE_HEIGHT = 100; // estimated height + padding
 
-  // Position clusters in a circle
-  const centerX = dynamicWidth / 2;
-  const centerY = dynamicHeight / 2;
-  const clusterRadius = Math.min(dynamicWidth, dynamicHeight) * 0.4;
+  // Calculate grid layout for clusters
+  const clusterCount = departments.length;
+  const clusterCols = Math.ceil(Math.sqrt(clusterCount));
+  const clusterRows = Math.ceil(clusterCount / clusterCols);
+
+  // Calculate max nodes per cluster to determine cluster cell size
+  let maxMembersInCluster = 0;
+  departments.forEach((dept) => {
+    const members = departmentMap.get(dept)!;
+    maxMembersInCluster = Math.max(maxMembersInCluster, Math.min(members.length, maxNodesPerCluster));
+  });
+
+  // Calculate cluster cell size based on max nodes
+  const nodesPerRow = Math.ceil(Math.sqrt(maxMembersInCluster));
+  const clusterWidth = nodesPerRow * NODE_WIDTH + 40; // padding
+  const clusterHeight = Math.ceil(maxMembersInCluster / nodesPerRow) * NODE_HEIGHT + 60; // padding + label
+
+  // Calculate total canvas size
+  const dynamicWidth = Math.max(canvasSize.width, clusterCols * clusterWidth + 100);
+  const dynamicHeight = Math.max(canvasSize.height, clusterRows * clusterHeight + 100);
 
   const clusters: ClusterDefinition[] = [];
   const nodes: ClusteredNode[] = [];
 
-  // Create cluster definitions and position nodes
+  // Create cluster definitions and position nodes using grid layout
   departments.forEach((dept, index) => {
     const members = departmentMap.get(dept)!;
-    const angle = (2 * Math.PI * index) / departments.length - Math.PI / 2;
 
-    // Cluster center position
-    const clusterCenterX = centerX + Math.cos(angle) * clusterRadius;
-    const clusterCenterY = centerY + Math.sin(angle) * clusterRadius;
+    // Calculate cluster grid position
+    const clusterCol = index % clusterCols;
+    const clusterRow = Math.floor(index / clusterCols);
+
+    // Cluster center position (with margins)
+    const clusterCenterX = 80 + clusterCol * clusterWidth + clusterWidth / 2;
+    const clusterCenterY = 80 + clusterRow * clusterHeight + clusterHeight / 2;
 
     // Limit members per cluster for performance
     const limitedMembers = members.slice(0, maxNodesPerCluster);
-
-    // Calculate cluster radius based on member count (increased for better spacing)
-    // Node width is 140px, so we need radius to accommodate spacing
-    const nodeRadius = Math.max(100, Math.min(300, 80 + limitedMembers.length * 25));
 
     const cluster: ClusterDefinition = {
       id: `cluster-${dept}`,
@@ -210,33 +223,27 @@ export function buildClusteredNetwork(
       color: getClusterColor(dept),
       memberIds: limitedMembers.map((m) => m.userId),
       center: { x: clusterCenterX, y: clusterCenterY },
-      radius: nodeRadius,
-      isExpanded: true, // Default to expanded
+      radius: Math.max(clusterWidth, clusterHeight) / 2,
+      isExpanded: true,
     };
     clusters.push(cluster);
 
-    // Position nodes within cluster
-    const nodeAngleStep = (2 * Math.PI) / Math.max(limitedMembers.length, 1);
-    // Use larger inner radius for better node spacing (node width is 140px)
-    const innerRadius = nodeRadius * 0.8;
+    // Position nodes within cluster using grid layout
+    const nodeColCount = Math.ceil(Math.sqrt(limitedMembers.length));
+    const nodeRowCount = Math.ceil(limitedMembers.length / nodeColCount);
+
+    // Calculate starting position for grid (top-left of cluster area)
+    const gridWidth = nodeColCount * NODE_WIDTH;
+    const gridHeight = nodeRowCount * NODE_HEIGHT;
+    const startX = clusterCenterX - gridWidth / 2 + NODE_WIDTH / 2;
+    const startY = clusterCenterY - gridHeight / 2 + NODE_HEIGHT / 2;
 
     limitedMembers.forEach((member, nodeIndex) => {
-      let nodeX: number, nodeY: number;
+      const nodeCol = nodeIndex % nodeColCount;
+      const nodeRow = Math.floor(nodeIndex / nodeColCount);
 
-      if (member.userId === currentUser.userId) {
-        // Current user at center of their cluster
-        nodeX = clusterCenterX;
-        nodeY = clusterCenterY;
-      } else if (limitedMembers.length === 1) {
-        // Single member at center
-        nodeX = clusterCenterX;
-        nodeY = clusterCenterY;
-      } else {
-        // Position around cluster center
-        const nodeAngle = nodeAngleStep * nodeIndex;
-        nodeX = clusterCenterX + Math.cos(nodeAngle) * innerRadius;
-        nodeY = clusterCenterY + Math.sin(nodeAngle) * innerRadius;
-      }
+      const nodeX = startX + nodeCol * NODE_WIDTH;
+      const nodeY = startY + nodeRow * NODE_HEIGHT;
 
       nodes.push({
         id: member.userId,
@@ -313,20 +320,12 @@ export function buildClusteredNetwork(
     }
   }
 
-  // Apply Force-Directed layout to prevent node overlapping
-  const forceLayoutNodes = applyForceLayout(
-    nodes,
-    edges,
-    { canvasSize: { width: dynamicWidth, height: dynamicHeight } },
-    150 // iterations for better convergence
-  );
-
   return {
     clusters,
-    nodes: forceLayoutNodes,
+    nodes,
     edges,
     stats: {
-      totalNodes: forceLayoutNodes.length,
+      totalNodes: nodes.length,
       totalEdges: edges.length,
       clusterCount: clusters.length,
       averageSimilarity: edgeCount > 0 ? totalSimilarity / edgeCount : 0,
