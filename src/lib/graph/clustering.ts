@@ -12,6 +12,7 @@ import {
   DEFAULT_ENHANCED_WEIGHTS,
 } from "@/lib/matching/enhancedAlgorithm";
 import { hasHighSynergy } from "@/lib/matching/departmentScoring";
+import { applyForceLayout } from "./layout";
 
 // Cluster color palette
 const CLUSTER_COLORS: Record<string, string> = {
@@ -173,10 +174,15 @@ export function buildClusteredNetwork(
   const departmentMap = createDepartmentClusters(allUsers, currentUser.userId);
   const departments = Array.from(departmentMap.keys());
 
+  // Calculate dynamic canvas size based on node count
+  const totalNodes = allUsers.length;
+  const dynamicWidth = Math.max(canvasSize.width, 800 + Math.floor(totalNodes / 10) * 200);
+  const dynamicHeight = Math.max(canvasSize.height, 600 + Math.floor(totalNodes / 10) * 150);
+
   // Position clusters in a circle
-  const centerX = canvasSize.width / 2;
-  const centerY = canvasSize.height / 2;
-  const clusterRadius = Math.min(canvasSize.width, canvasSize.height) * 0.35;
+  const centerX = dynamicWidth / 2;
+  const centerY = dynamicHeight / 2;
+  const clusterRadius = Math.min(dynamicWidth, dynamicHeight) * 0.4;
 
   const clusters: ClusterDefinition[] = [];
   const nodes: ClusteredNode[] = [];
@@ -193,8 +199,9 @@ export function buildClusteredNetwork(
     // Limit members per cluster for performance
     const limitedMembers = members.slice(0, maxNodesPerCluster);
 
-    // Calculate cluster radius based on member count
-    const nodeRadius = Math.max(60, Math.min(120, 40 + limitedMembers.length * 15));
+    // Calculate cluster radius based on member count (increased for better spacing)
+    // Node width is 140px, so we need radius to accommodate spacing
+    const nodeRadius = Math.max(100, Math.min(300, 80 + limitedMembers.length * 25));
 
     const cluster: ClusterDefinition = {
       id: `cluster-${dept}`,
@@ -210,7 +217,8 @@ export function buildClusteredNetwork(
 
     // Position nodes within cluster
     const nodeAngleStep = (2 * Math.PI) / Math.max(limitedMembers.length, 1);
-    const innerRadius = nodeRadius * 0.6;
+    // Use larger inner radius for better node spacing (node width is 140px)
+    const innerRadius = nodeRadius * 0.8;
 
     limitedMembers.forEach((member, nodeIndex) => {
       let nodeX: number, nodeY: number;
@@ -305,12 +313,20 @@ export function buildClusteredNetwork(
     }
   }
 
-  return {
-    clusters,
+  // Apply Force-Directed layout to prevent node overlapping
+  const forceLayoutNodes = applyForceLayout(
     nodes,
     edges,
+    { canvasSize: { width: dynamicWidth, height: dynamicHeight } },
+    150 // iterations for better convergence
+  );
+
+  return {
+    clusters,
+    nodes: forceLayoutNodes,
+    edges,
     stats: {
-      totalNodes: nodes.length,
+      totalNodes: forceLayoutNodes.length,
       totalEdges: edges.length,
       clusterCount: clusters.length,
       averageSimilarity: edgeCount > 0 ? totalSimilarity / edgeCount : 0,

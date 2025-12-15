@@ -194,10 +194,10 @@ export async function GET(request: Request) {
       };
     });
 
-    // Build clustered network
+    // Build clustered network with increased node limit per cluster
     const clusteringResult = buildClusteredNetwork(currentUser, otherUsers, {
       minSimilarity,
-      maxNodesPerCluster: 10,
+      maxNodesPerCluster: 15, // Increased from 10 for better coverage
       canvasSize: { width: canvasWidth, height: canvasHeight },
     });
 

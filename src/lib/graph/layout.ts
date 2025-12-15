@@ -164,8 +164,10 @@ export function applyForceLayout(
   });
 
   // Force-directed simulation
-  const k = 100; // Spring constant
-  const repulsion = 5000; // Repulsion constant
+  // Increased repulsion for node size of 140px to prevent overlapping
+  const k = 80; // Spring constant (reduced for tighter connected nodes)
+  const repulsion = 15000; // Repulsion constant (increased for larger node spacing)
+  const minDistance = 160; // Minimum distance between nodes (node width + padding)
 
   for (let iter = 0; iter < iterations; iter++) {
     const temperature = 1 - iter / iterations;
@@ -182,7 +184,15 @@ export function applyForceLayout(
         const dx = positionedNodes[j].position.x - positionedNodes[i].position.x;
         const dy = positionedNodes[j].position.y - positionedNodes[i].position.y;
         const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
-        const force = repulsion / (dist * dist);
+
+        // Strong repulsion when nodes are too close (within minDistance)
+        let force: number;
+        if (dist < minDistance) {
+          // Extra strong repulsion to push nodes apart
+          force = repulsion * 2 / (dist * dist);
+        } else {
+          force = repulsion / (dist * dist);
+        }
 
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
