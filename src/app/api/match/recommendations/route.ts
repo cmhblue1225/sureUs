@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { calculateMatchScore, type MatchCandidate } from "@/lib/matching/algorithm";
-import { generateMatchExplanation } from "@/lib/matching/explainability";
+import {
+  calculateEnhancedMatchScore,
+  generateEnhancedExplanation,
+  getConversationStarters,
+  type EnhancedMatchCandidate,
+  type EnhancedMatchWeights,
+  type EnhancedUserPreferences,
+  DEFAULT_ENHANCED_WEIGHTS,
+} from "@/lib/matching/enhancedAlgorithm";
 import type { Database } from "@/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -145,7 +152,7 @@ export async function GET(request: Request) {
     });
 
     // Build current user candidate object
-    const currentUser: MatchCandidate = {
+    const currentUser: EnhancedMatchCandidate = {
       userId: user.id,
       name: "",
       department: userProfile.department,
@@ -159,12 +166,32 @@ export async function GET(request: Request) {
       preferredPeopleTypeEmbedding: parseEmbedding(userEmbedding?.preferred_people_type_embedding),
     };
 
-    // Calculate scores for each candidate
+    // Build enhanced weights from user preferences
+    const weights: EnhancedMatchWeights = userPreferences ? {
+      embeddingWeight: userPreferences.embedding_weight ?? DEFAULT_ENHANCED_WEIGHTS.embeddingWeight,
+      tagWeight: userPreferences.tag_weight ?? DEFAULT_ENHANCED_WEIGHTS.tagWeight,
+      mbtiWeight: (userPreferences as Record<string, unknown>).mbti_weight as number ?? DEFAULT_ENHANCED_WEIGHTS.mbtiWeight,
+      jobRoleWeight: (userPreferences as Record<string, unknown>).job_role_weight as number ?? DEFAULT_ENHANCED_WEIGHTS.jobRoleWeight,
+      departmentWeight: (userPreferences as Record<string, unknown>).department_weight as number ?? DEFAULT_ENHANCED_WEIGHTS.departmentWeight,
+      locationWeight: (userPreferences as Record<string, unknown>).location_weight as number ?? DEFAULT_ENHANCED_WEIGHTS.locationWeight,
+      preferenceWeight: userPreferences.preference_weight ?? DEFAULT_ENHANCED_WEIGHTS.preferenceWeight,
+    } : DEFAULT_ENHANCED_WEIGHTS;
+
+    // Build enhanced user preferences
+    const enhancedPreferences: EnhancedUserPreferences | null = userPreferences ? {
+      preferredDepartments: userPreferences.preferred_departments || undefined,
+      preferredJobRoles: userPreferences.preferred_job_roles || undefined,
+      preferredLocations: userPreferences.preferred_locations || undefined,
+      preferredMbtiTypes: userPreferences.preferred_mbti_types || undefined,
+      preferCrossDepartment: (userPreferences as Record<string, unknown>).prefer_cross_department as boolean ?? true,
+    } : null;
+
+    // Calculate scores for each candidate using enhanced algorithm
     const scoredCandidates = typedCandidates.map((profile) => {
       const candidateUser = profile.users as { id: string; name: string; avatar_url: string | null };
       const embedding = embeddingsByUserId.get(profile.user_id);
 
-      const candidate: MatchCandidate = {
+      const candidate: EnhancedMatchCandidate = {
         userId: profile.user_id,
         name: candidateUser.name,
         department: profile.department,
@@ -193,28 +220,23 @@ export async function GET(request: Request) {
         candidate.preferredPeopleTypeEmbedding = undefined;
       }
 
-      const scores = calculateMatchScore(
+      // Use enhanced scoring with all 7 components
+      const scores = calculateEnhancedMatchScore(
         currentUser,
         candidate,
-        userPreferences ? {
-          preferredDepartments: userPreferences.preferred_departments || undefined,
-          preferredJobRoles: userPreferences.preferred_job_roles || undefined,
-          preferredLocations: userPreferences.preferred_locations || undefined,
-          preferredMbtiTypes: userPreferences.preferred_mbti_types || undefined,
-        } : null,
-        userPreferences ? {
-          embeddingWeight: userPreferences.embedding_weight,
-          tagWeight: userPreferences.tag_weight,
-          preferenceWeight: userPreferences.preference_weight,
-        } : undefined
+        enhancedPreferences,
+        weights
       );
 
-      const explanation = generateMatchExplanation(currentUser, candidate, scores);
+      // Generate enhanced explanation
+      const explanation = generateEnhancedExplanation(currentUser, candidate, scores);
+      const conversationStarters = getConversationStarters(currentUser, candidate);
 
       return {
         candidate,
         scores,
         explanation,
+        conversationStarters,
       };
     });
 
@@ -222,7 +244,7 @@ export async function GET(request: Request) {
     scoredCandidates.sort((a, b) => b.scores.totalScore - a.scores.totalScore);
     const topCandidates = scoredCandidates.slice(0, limit);
 
-    // Format response - NEVER use "compatibility score" language
+    // Format response with enhanced breakdown
     const recommendations = topCandidates.map((item) => ({
       user: {
         id: item.candidate.userId,
@@ -230,6 +252,7 @@ export async function GET(request: Request) {
         department: item.candidate.department,
         jobRole: item.candidate.jobRole,
         officeLocation: item.candidate.officeLocation,
+        mbti: item.candidate.mbti,
         avatarUrl: item.candidate.avatarUrl,
         hobbies: item.candidate.hobbies,
       },
@@ -238,9 +261,14 @@ export async function GET(request: Request) {
         breakdown: {
           textSimilarity: Math.round(item.scores.embeddingSimilarity * 1000) / 1000,
           tagOverlap: Math.round(item.scores.tagOverlapScore * 1000) / 1000,
+          mbtiCompatibility: Math.round(item.scores.mbtiCompatibilityScore * 1000) / 1000,
+          jobRole: Math.round(item.scores.jobRoleScore * 1000) / 1000,
+          department: Math.round(item.scores.departmentScore * 1000) / 1000,
+          location: Math.round(item.scores.locationScore * 1000) / 1000,
           preferenceMatch: Math.round(item.scores.preferenceMatchScore * 1000) / 1000,
         },
         explanation: item.explanation,
+        conversationStarters: item.conversationStarters,
       },
     }));
 

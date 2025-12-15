@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TagInput } from "./TagInput";
 import { VisibilitySelector } from "./VisibilitySelector";
+import { AvatarUpload } from "./AvatarUpload";
 import { DEPARTMENTS } from "@/lib/constants/departments";
 import { JOB_ROLES } from "@/lib/constants/jobRoles";
 import { OFFICE_LOCATIONS } from "@/lib/constants/locations";
@@ -25,12 +26,14 @@ import type { UserProfile } from "@/types/profile";
 
 interface ProfileFormProps {
   initialData?: Partial<UserProfile>;
+  currentAvatarUrl?: string | null;
 }
 
-export function ProfileForm({ initialData }: ProfileFormProps) {
+export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(currentAvatarUrl || null);
 
   // Form state
   const [department, setDepartment] = useState(initialData?.department || "");
@@ -105,6 +108,23 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
           {error}
         </div>
       )}
+
+      {/* Profile Photo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>프로필 사진</CardTitle>
+          <CardDescription>나를 나타내는 사진을 등록하세요 (선택)</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <AvatarUpload
+            currentAvatarUrl={avatarUrl}
+            onUploadSuccess={(url) => setAvatarUrl(url)}
+            onRemoveSuccess={() => setAvatarUrl(null)}
+            size="lg"
+            disabled={loading}
+          />
+        </CardContent>
+      </Card>
 
       {/* Basic Info */}
       <Card>

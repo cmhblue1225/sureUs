@@ -10,8 +10,18 @@ export default async function ProfileEditPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   let initialData: Partial<UserProfile> = {};
+  let currentAvatarUrl: string | null = null;
 
   if (user) {
+    // Get user's avatar_url
+    const { data: userData } = await supabase
+      .from("users")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .single<{ avatar_url: string | null }>();
+
+    currentAvatarUrl = userData?.avatar_url || null;
+
     // Get existing profile data
     const { data: profile } = await supabase
       .from("profiles")
@@ -49,7 +59,7 @@ export default async function ProfileEditPage() {
         </p>
       </div>
 
-      <ProfileForm initialData={initialData} />
+      <ProfileForm initialData={initialData} currentAvatarUrl={currentAvatarUrl} />
     </div>
   );
 }

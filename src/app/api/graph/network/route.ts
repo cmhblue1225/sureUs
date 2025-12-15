@@ -1,38 +1,39 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { calculateTagOverlap, getCommonTags } from "@/lib/matching/algorithm";
 import type { Database } from "@/types/database";
+import type { EnhancedMatchCandidate } from "@/lib/matching/enhancedAlgorithm";
+import {
+  buildClusteredNetwork,
+  filterEdgesBySimilarity,
+  type ClusteringResult,
+} from "@/lib/graph/clustering";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
 type ProfileWithUser = ProfileRow & { users: { id: string; name: string; avatar_url: string | null; deleted_at: string | null } };
 
-interface NetworkNode {
-  id: string;
-  type: "user";
-  data: {
-    name: string;
-    department?: string;
-    jobRole?: string;
-    avatarUrl?: string;
-    isCurrentUser: boolean;
-  };
-  position: { x: number; y: number };
-}
-
-interface NetworkEdge {
-  id: string;
-  source: string;
-  target: string;
-  data: {
-    similarity: number;
-    commonTags: string[];
-  };
+// Helper to parse embedding that may be stored as JSON string or already an array
+function parseEmbedding(embedding: unknown): number[] | undefined {
+  if (!embedding) return undefined;
+  if (Array.isArray(embedding)) return embedding;
+  if (typeof embedding === "string") {
+    try {
+      const parsed = JSON.parse(embedding);
+      return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const topK = Math.min(parseInt(searchParams.get("topK") || "5"), 10);
+    const minSimilarity = parseFloat(searchParams.get("minSimilarity") || "0.2");
+    const maxNodes = Math.min(parseInt(searchParams.get("maxNodes") || "50"), 100);
+    const canvasWidth = parseInt(searchParams.get("width") || "800");
+    const canvasHeight = parseInt(searchParams.get("height") || "600");
 
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -64,7 +65,28 @@ export async function GET(request: Request) {
       .select("tag_name")
       .eq("profile_id", userProfile.id);
 
-    const userTagList = userTags?.map((t: { tag_name: string }) => t.tag_name) || [];
+    // Get user's embedding
+    const { data: userEmbedding } = await supabase
+      .from("embeddings")
+      .select("*")
+      .eq("user_id", user.id)
+      .single<EmbeddingRow>();
+
+    // Build current user candidate
+    const currentUser: EnhancedMatchCandidate = {
+      userId: user.id,
+      name: (userProfile.users as { name: string }).name,
+      department: userProfile.department,
+      jobRole: userProfile.job_role,
+      officeLocation: userProfile.office_location,
+      mbti: userProfile.mbti || undefined,
+      avatarUrl: (userProfile.users as { avatar_url: string | null }).avatar_url || undefined,
+      hobbies: userTags?.map((t: { tag_name: string }) => t.tag_name) || [],
+      embedding: parseEmbedding(userEmbedding?.combined_embedding),
+      collaborationStyleEmbedding: parseEmbedding(userEmbedding?.collaboration_style_embedding),
+      strengthsEmbedding: parseEmbedding(userEmbedding?.strengths_embedding),
+      preferredPeopleTypeEmbedding: parseEmbedding(userEmbedding?.preferred_people_type_embedding),
+    };
 
     // Get all other profiles using service client
     const serviceClient = createServiceClient();
@@ -78,38 +100,66 @@ export async function GET(request: Request) {
       .eq("is_profile_complete", true)
       .neq("user_id", user.id)
       .is("users.deleted_at", null)
-      .limit(50);
+      .limit(maxNodes);
 
     if (!otherProfiles || otherProfiles.length === 0) {
-      // Return just the current user
-      const nodes: NetworkNode[] = [
-        {
+      // Return just the current user with a single cluster
+      const result: ClusteringResult = {
+        clusters: [{
+          id: `cluster-${userProfile.department}`,
+          label: userProfile.department,
+          department: userProfile.department,
+          color: "#3B82F6",
+          memberIds: [user.id],
+          center: { x: canvasWidth / 2, y: canvasHeight / 2 },
+          radius: 60,
+          isExpanded: true,
+        }],
+        nodes: [{
           id: user.id,
-          type: "user",
-          data: {
-            name: (userProfile.users as { name: string }).name,
-            department: userProfile.department,
-            jobRole: userProfile.job_role,
-            avatarUrl: (userProfile.users as { avatar_url: string | null }).avatar_url || undefined,
-            isCurrentUser: true,
-          },
-          position: { x: 300, y: 300 },
+          userId: user.id,
+          name: currentUser.name,
+          department: userProfile.department,
+          jobRole: userProfile.job_role,
+          officeLocation: userProfile.office_location,
+          mbti: userProfile.mbti || undefined,
+          avatarUrl: currentUser.avatarUrl,
+          hobbies: currentUser.hobbies,
+          isCurrentUser: true,
+          clusterId: `cluster-${userProfile.department}`,
+          position: { x: canvasWidth / 2, y: canvasHeight / 2 },
+        }],
+        edges: [],
+        stats: {
+          totalNodes: 1,
+          totalEdges: 0,
+          clusterCount: 1,
+          averageSimilarity: 0,
         },
-      ];
+      };
 
       return NextResponse.json({
         success: true,
-        data: { nodes, edges: [] },
+        data: result,
       });
     }
 
     // Get tags for all profiles
-    const profileIds = (otherProfiles as ProfileWithUser[]).map((p) => p.id);
+    const typedProfiles = otherProfiles as ProfileWithUser[];
+    const profileIds = typedProfiles.map((p) => p.id);
+    const candidateUserIds = typedProfiles.map((p) => p.user_id);
+
     const { data: allTags } = await serviceClient
       .from("profile_tags")
       .select("profile_id, tag_name")
       .in("profile_id", profileIds);
 
+    const { data: candidateEmbeddings } = await serviceClient
+      .from("embeddings")
+      .select("*")
+      .in("user_id", candidateUserIds);
+
+    // Build tag map
     const tagsByProfileId = new Map<string, string[]>();
     allTags?.forEach((t: { profile_id: string; tag_name: string }) => {
       const tags = tagsByProfileId.get(t.profile_id) || [];
@@ -117,105 +167,53 @@ export async function GET(request: Request) {
       tagsByProfileId.set(t.profile_id, tags);
     });
 
-    // Calculate similarities and find top K for each user
-    interface ScoredProfile {
-      profile: ProfileWithUser;
-      similarity: number;
-      commonTags: string[];
-    }
-
-    const typedProfiles = otherProfiles as ProfileWithUser[];
-    const scoredProfiles: ScoredProfile[] = typedProfiles.map((profile) => {
-      const profileTags = tagsByProfileId.get(profile.id) || [];
-      const similarity = calculateTagOverlap(userTagList, profileTags);
-      const commonTags = getCommonTags(userTagList, profileTags);
-
-      return { profile, similarity, commonTags };
+    // Build embedding map
+    const embeddingsByUserId = new Map<string, EmbeddingRow>();
+    (candidateEmbeddings as EmbeddingRow[] | null)?.forEach((e) => {
+      embeddingsByUserId.set(e.user_id, e);
     });
 
-    // Sort by similarity and take top K
-    scoredProfiles.sort((a, b) => b.similarity - a.similarity);
-    const topProfiles = scoredProfiles.filter((p) => p.similarity > 0).slice(0, topK);
+    // Build other users as candidates
+    const otherUsers: EnhancedMatchCandidate[] = typedProfiles.map((profile) => {
+      const userData = profile.users as { id: string; name: string; avatar_url: string | null };
+      const embedding = embeddingsByUserId.get(profile.user_id);
 
-    // Create nodes
-    const nodes: NetworkNode[] = [];
-    const edges: NetworkEdge[] = [];
-
-    // Add current user as center node
-    nodes.push({
-      id: user.id,
-      type: "user",
-      data: {
-        name: (userProfile.users as { name: string }).name,
-        department: userProfile.department,
-        jobRole: userProfile.job_role,
-        avatarUrl: (userProfile.users as { avatar_url: string | null }).avatar_url || undefined,
-        isCurrentUser: true,
-      },
-      position: { x: 300, y: 300 },
+      return {
+        userId: profile.user_id,
+        name: userData.name,
+        department: profile.department,
+        jobRole: profile.job_role,
+        officeLocation: profile.office_location,
+        mbti: profile.mbti || undefined,
+        avatarUrl: userData.avatar_url || undefined,
+        hobbies: tagsByProfileId.get(profile.id) || [],
+        embedding: parseEmbedding(embedding?.combined_embedding),
+        collaborationStyleEmbedding: parseEmbedding(embedding?.collaboration_style_embedding),
+        strengthsEmbedding: parseEmbedding(embedding?.strengths_embedding),
+        preferredPeopleTypeEmbedding: parseEmbedding(embedding?.preferred_people_type_embedding),
+      };
     });
 
-    // Add connected users in a circle around the center
-    const angleStep = (2 * Math.PI) / Math.max(topProfiles.length, 1);
-    const radius = 200;
-
-    topProfiles.forEach((item, index) => {
-      const userData = item.profile.users as { id: string; name: string; avatar_url: string | null };
-      const angle = index * angleStep - Math.PI / 2;
-      const x = 300 + Math.cos(angle) * radius;
-      const y = 300 + Math.sin(angle) * radius;
-
-      nodes.push({
-        id: item.profile.user_id,
-        type: "user",
-        data: {
-          name: userData.name,
-          department: item.profile.department,
-          jobRole: item.profile.job_role,
-          avatarUrl: userData.avatar_url || undefined,
-          isCurrentUser: false,
-        },
-        position: { x, y },
-      });
-
-      // Create edge to center user
-      edges.push({
-        id: `edge-${user.id}-${item.profile.user_id}`,
-        source: user.id,
-        target: item.profile.user_id,
-        data: {
-          similarity: Math.round(item.similarity * 100) / 100,
-          commonTags: item.commonTags,
-        },
-      });
+    // Build clustered network
+    const clusteringResult = buildClusteredNetwork(currentUser, otherUsers, {
+      minSimilarity,
+      maxNodesPerCluster: 10,
+      canvasSize: { width: canvasWidth, height: canvasHeight },
     });
 
-    // Add edges between connected users if they share common tags
-    for (let i = 0; i < topProfiles.length; i++) {
-      for (let j = i + 1; j < topProfiles.length; j++) {
-        const tagsI = tagsByProfileId.get(topProfiles[i].profile.id) || [];
-        const tagsJ = tagsByProfileId.get(topProfiles[j].profile.id) || [];
-        const similarity = calculateTagOverlap(tagsI, tagsJ);
-
-        if (similarity > 0.3) {
-          // Only show strong connections
-          const commonTags = getCommonTags(tagsI, tagsJ);
-          edges.push({
-            id: `edge-${topProfiles[i].profile.user_id}-${topProfiles[j].profile.user_id}`,
-            source: topProfiles[i].profile.user_id,
-            target: topProfiles[j].profile.user_id,
-            data: {
-              similarity: Math.round(similarity * 100) / 100,
-              commonTags,
-            },
-          });
-        }
-      }
-    }
+    // Apply similarity filter if specified
+    const filteredEdges = filterEdgesBySimilarity(clusteringResult.edges, minSimilarity);
 
     return NextResponse.json({
       success: true,
-      data: { nodes, edges },
+      data: {
+        ...clusteringResult,
+        edges: filteredEdges,
+        stats: {
+          ...clusteringResult.stats,
+          totalEdges: filteredEdges.length,
+        },
+      },
     });
   } catch (error) {
     console.error("Network API error:", error);
