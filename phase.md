@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2025-12-15
 
-## 현재 Phase: 6 (알고리즘 및 시각화 고도화)
+## 현재 Phase: 7 (동호회 기능 구현)
 
 ---
 
@@ -157,3 +157,68 @@
 | 2025-12-15 | 5 | /api/user GET 추가, 임베딩 JSON 파싱 수정 |
 | 2025-12-15 | 6 | 알고리즘 고도화 시작 |
 | 2025-12-15 | 6 | 7컴포넌트 점수 알고리즘, 클러스터링, 인터랙티브 시각화 완료 |
+| 2025-12-15 | 7 | 동호회 기능 구현 시작 |
+
+---
+
+## Phase 7: 동호회(Club) 기능 구현
+**상태: 진행 중**
+
+### 7-1. 데이터베이스 스키마
+| 작업 | 상태 | 파일/설명 |
+|------|------|------|
+| clubs 테이블 | ✅ 완료 | Supabase MCP |
+| club_members 테이블 | ✅ 완료 | Supabase MCP |
+| club_join_requests 테이블 | ✅ 완료 | Supabase MCP |
+| club_posts 테이블 | ✅ 완료 | Supabase MCP |
+| club_comments 테이블 | ✅ 완료 | Supabase MCP |
+| club_likes 테이블 | ✅ 완료 | Supabase MCP |
+| club_polls 테이블 | ✅ 완료 | Supabase MCP |
+| club_poll_votes 테이블 | ✅ 완료 | Supabase MCP |
+| club_chat_messages 테이블 | ✅ 완료 | Supabase MCP |
+| RLS 정책 | ✅ 완료 | Supabase MCP |
+| Realtime publication | ✅ 완료 | Supabase MCP |
+
+### 7-2. 동호회 기본 API
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 동호회 목록/생성 | ✅ 완료 | `src/app/api/clubs/route.ts` |
+| 동호회 상세/수정/삭제 | ✅ 완료 | `src/app/api/clubs/[id]/route.ts` |
+| 가입/탈퇴 | ✅ 완료 | `src/app/api/clubs/[id]/join/route.ts`, `leave/route.ts` |
+| 회원 목록/강퇴 | ✅ 완료 | `src/app/api/clubs/[id]/members/*` |
+| 가입 신청 관리 | ✅ 완료 | `src/app/api/clubs/[id]/requests/*` |
+
+### 7-3. 게시판 API
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 게시물 목록/작성 | ✅ 완료 | `src/app/api/clubs/[id]/posts/route.ts` |
+| 게시물 상세/수정/삭제 | ✅ 완료 | `src/app/api/clubs/[id]/posts/[postId]/route.ts` |
+| 댓글 CRUD | ✅ 완료 | `src/app/api/clubs/[id]/posts/[postId]/comments/route.ts` |
+| 좋아요 토글 | ✅ 완료 | `src/app/api/clubs/[id]/posts/[postId]/like/route.ts` |
+
+### 7-4. 동호회 UI
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 동호회 목록 페이지 | ✅ 완료 | `src/app/(main)/clubs/page.tsx` |
+| 동호회 생성 페이지 | ✅ 완료 | `src/app/(main)/clubs/create/page.tsx` |
+| 동호회 상세 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/page.tsx` |
+| 회원 목록 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/members/page.tsx` |
+| 가입 신청 관리 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/requests/page.tsx` |
+| 게시판 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/posts/page.tsx` |
+| Sidebar 메뉴 추가 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+
+### 7-5. 실시간 채팅
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 채팅 API | ✅ 완료 | `src/app/api/clubs/[id]/chat/route.ts` |
+| 채팅 UI 컴포넌트 | ✅ 완료 | `src/components/clubs/ClubChat.tsx` |
+| 채팅 페이지 | ✅ 완료 | `src/app/(main)/clubs/[id]/chat/page.tsx` |
+| Supabase Realtime 구독 | ✅ 완료 | WebSocket 실시간 메시지 |
+
+### 7-6. 추가 기능 (예정)
+| 작업 | 상태 | 설명 |
+|------|------|------|
+| 투표 기능 | ⏳ 대기 | 투표 생성/참여 UI |
+| 갤러리 기능 | ⏳ 대기 | 이미지 업로드/표시 |
+| 동호회 추천 알고리즘 | ⏳ 대기 | 그래프 기반 유사도 |
+| LLM 통합 | ⏳ 대기 | Anthropic API |
