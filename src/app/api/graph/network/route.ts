@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
-import type { EnhancedMatchCandidate } from "@/lib/matching/enhancedAlgorithm";
+import {
+  calculateEnhancedMatchScore,
+  DEFAULT_ENHANCED_WEIGHTS,
+  type EnhancedMatchCandidate,
+} from "@/lib/matching/enhancedAlgorithm";
 import {
   buildClusteredNetwork,
   filterEdgesBySimilarity,
@@ -174,7 +178,7 @@ export async function GET(request: Request) {
     });
 
     // Build other users as candidates
-    const otherUsers: EnhancedMatchCandidate[] = typedProfiles.map((profile) => {
+    const allOtherUsers: EnhancedMatchCandidate[] = typedProfiles.map((profile) => {
       const userData = profile.users as { id: string; name: string; avatar_url: string | null };
       const embedding = embeddingsByUserId.get(profile.user_id);
 
@@ -194,10 +198,63 @@ export async function GET(request: Request) {
       };
     });
 
-    // Build clustered network with increased node limit per cluster
-    const clusteringResult = buildClusteredNetwork(currentUser, otherUsers, {
+    // Filter to only include users related to the current user (above minSimilarity threshold)
+    const relatedUsers = allOtherUsers.filter((otherUser) => {
+      const scores = calculateEnhancedMatchScore(
+        currentUser,
+        otherUser,
+        null,
+        DEFAULT_ENHANCED_WEIGHTS
+      );
+      return scores.totalScore >= minSimilarity;
+    });
+
+    // If no related users found, return just the current user
+    if (relatedUsers.length === 0) {
+      const result: ClusteringResult = {
+        clusters: [{
+          id: `cluster-${userProfile.department}`,
+          label: userProfile.department,
+          department: userProfile.department,
+          color: "#3B82F6",
+          memberIds: [user.id],
+          center: { x: canvasWidth / 2, y: canvasHeight / 2 },
+          radius: 60,
+          isExpanded: true,
+        }],
+        nodes: [{
+          id: user.id,
+          userId: user.id,
+          name: currentUser.name,
+          department: userProfile.department,
+          jobRole: userProfile.job_role,
+          officeLocation: userProfile.office_location,
+          mbti: userProfile.mbti || undefined,
+          avatarUrl: currentUser.avatarUrl,
+          hobbies: currentUser.hobbies,
+          isCurrentUser: true,
+          clusterId: `cluster-${userProfile.department}`,
+          position: { x: canvasWidth / 2, y: canvasHeight / 2 },
+        }],
+        edges: [],
+        stats: {
+          totalNodes: 1,
+          totalEdges: 0,
+          clusterCount: 1,
+          averageSimilarity: 0,
+        },
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: result,
+      });
+    }
+
+    // Build clustered network with only related users
+    const clusteringResult = buildClusteredNetwork(currentUser, relatedUsers, {
       minSimilarity,
-      maxNodesPerCluster: 15, // Increased from 10 for better coverage
+      maxNodesPerCluster: 15,
       canvasSize: { width: canvasWidth, height: canvasHeight },
     });
 

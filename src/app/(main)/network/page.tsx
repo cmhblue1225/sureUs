@@ -17,12 +17,13 @@ import "@xyflow/react/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, User, MessageCircle } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import {
   EnhancedUserNode,
   CustomEdge,
   GraphControls,
+  ProfileModal,
   type EnhancedUserNodeData,
   type CustomEdgeData,
 } from "@/components/graph";
@@ -56,6 +57,7 @@ export default function NetworkPage() {
   const [minSimilarity, setMinSimilarity] = useState(0.2);
   const [selectedNode, setSelectedNode] = useState<ClusteredNode | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<ClusteredEdge | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -158,13 +160,14 @@ export default function NetworkPage() {
     setEdges,
   ]);
 
-  // Node click handler
+  // Node click handler - opens profile modal
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       const clusteredNode = clusteringResult?.nodes.find((n) => n.id === node.id);
       if (clusteredNode) {
         setSelectedNode(clusteredNode);
         setSelectedEdge(null);
+        setIsProfileModalOpen(true);
         interaction.onNodeSelect(node.id);
       }
     },
@@ -186,7 +189,6 @@ export default function NetworkPage() {
 
   // Pane click handler
   const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
     setSelectedEdge(null);
     interaction.resetSelection();
   }, [interaction]);
@@ -300,72 +302,6 @@ export default function NetworkPage() {
             />
           )}
 
-          {/* Selected Node Info */}
-          {selectedNode && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                    {selectedNode.avatarUrl ? (
-                      <img
-                        src={selectedNode.avatarUrl}
-                        alt={selectedNode.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-6 h-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{selectedNode.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedNode.department}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedNode.jobRole && (
-                  <p className="text-sm mb-2">{selectedNode.jobRole}</p>
-                )}
-
-                {selectedNode.officeLocation && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {selectedNode.officeLocation}
-                  </p>
-                )}
-
-                {/* MBTI & Hobbies */}
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {selectedNode.mbti && (
-                    <Badge variant="secondary" className="text-xs font-mono">
-                      {selectedNode.mbti}
-                    </Badge>
-                  )}
-                  {selectedNode.hobbies.slice(0, 3).map((hobby) => (
-                    <Badge key={hobby} variant="outline" className="text-xs">
-                      {hobby}
-                    </Badge>
-                  ))}
-                </div>
-
-                {!selectedNode.isCurrentUser && (
-                  <div className="flex gap-2">
-                    <Link href={`/profile/${selectedNode.userId}`} className="flex-1">
-                      <Button className="w-full" variant="outline" size="sm">
-                        프로필 보기
-                      </Button>
-                    </Link>
-                    <Link href={`/messages?to=${selectedNode.userId}`} className="flex-1">
-                      <Button className="w-full" size="sm">
-                        <MessageCircle className="w-4 h-4 mr-1" />
-                        메시지
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Selected Edge Info */}
           {selectedEdge && (
@@ -432,6 +368,13 @@ export default function NetworkPage() {
           )}
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        node={selectedNode}
+        open={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
+      />
     </div>
   );
 }
