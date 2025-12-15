@@ -9,6 +9,7 @@ import {
   Search,
   Sparkles,
   Network,
+  MessageCircle,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const navigation = [
   { name: "검색", href: "/search", icon: Search },
   { name: "추천", href: "/recommendations", icon: Sparkles },
   { name: "네트워크", href: "/network", icon: Network },
+  { name: "메시지", href: "/messages", icon: MessageCircle },
   { name: "설정", href: "/settings", icon: Settings },
 ];
 

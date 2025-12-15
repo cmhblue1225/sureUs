@@ -2,6 +2,7 @@
 
 import { User } from "lucide-react";
 import Link from "next/link";
+import { NotificationBell } from "./NotificationBell";
 
 interface HeaderProps {
   userName?: string;
@@ -16,6 +17,7 @@ export function Header({ userName, avatarUrl }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        <NotificationBell />
         <Link
           href="/profile"
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"

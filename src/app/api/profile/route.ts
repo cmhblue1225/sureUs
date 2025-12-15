@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { profileFormSchema } from "@/lib/utils/validation";
+import { generateProfileEmbeddings } from "@/lib/openai/embeddings";
 import type { Database } from "@/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -129,6 +131,58 @@ export async function POST(request: Request) {
       }
     }
 
+    // Generate embeddings synchronously
+    let embeddingsGenerated = false;
+
+    if (data.collaborationStyle || data.strengths || data.preferredPeopleType) {
+      try {
+        const embeddings = await generateProfileEmbeddings({
+          collaborationStyle: data.collaborationStyle,
+          strengths: data.strengths,
+          preferredPeopleType: data.preferredPeopleType,
+        });
+
+        if (embeddings) {
+          // Use service client to bypass RLS
+          const serviceClient = createServiceClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+
+          // Upsert embeddings
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: embeddingError } = await (serviceClient.from("embeddings") as any)
+            .upsert({
+              user_id: user.id,
+              combined_embedding: JSON.stringify(embeddings.combinedEmbedding),
+              collaboration_style_embedding: embeddings.collaborationStyleEmbedding
+                ? JSON.stringify(embeddings.collaborationStyleEmbedding)
+                : null,
+              strengths_embedding: embeddings.strengthsEmbedding
+                ? JSON.stringify(embeddings.strengthsEmbedding)
+                : null,
+              preferred_people_type_embedding: embeddings.preferredPeopleTypeEmbedding
+                ? JSON.stringify(embeddings.preferredPeopleTypeEmbedding)
+                : null,
+              source_text_hash: embeddings.sourceTextHash,
+              generated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: "user_id",
+            });
+
+          if (embeddingError) {
+            console.error("Embedding save error:", embeddingError);
+          } else {
+            embeddingsGenerated = true;
+          }
+        }
+      } catch (embeddingErr) {
+        console.error("Embedding generation error:", embeddingErr);
+        // Continue without embeddings - not a critical failure
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -148,7 +202,7 @@ export async function POST(request: Request) {
         updatedAt: profile.updated_at,
       },
       meta: {
-        embeddingsGenerated: false, // Will be generated in background
+        embeddingsGenerated,
       },
     });
   } catch (error) {
