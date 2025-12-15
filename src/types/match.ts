@@ -1,20 +1,23 @@
 export interface MatchScoreBreakdown {
   textSimilarity: number;
   tagOverlap: number;
+  mbtiCompatibility: number;
+  jobRole: number;
+  department: number;
+  location: number;
   preferenceMatch: number;
 }
 
 export interface MatchExplanationDetail {
-  factor: "collaboration_style" | "hobbies" | "strengths" | "preferred_type";
+  label: string;
+  value: string;
   score: number;
-  reason: string;
 }
 
 export interface MatchExplanation {
   summary: string;
+  highlights: string[];
   details: MatchExplanationDetail[];
-  commonTags: string[];
-  suggestedTopics: string[];
 }
 
 export interface MatchedUser {
@@ -23,6 +26,7 @@ export interface MatchedUser {
   department: string;
   jobRole: string;
   officeLocation: string;
+  mbti?: string;
   avatarUrl?: string;
   hobbies: string[];
 }
@@ -33,6 +37,7 @@ export interface MatchRecommendation {
     totalScore: number;
     breakdown: MatchScoreBreakdown;
     explanation: MatchExplanation;
+    conversationStarters: string[];
   };
 }
 

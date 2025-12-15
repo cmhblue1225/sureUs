@@ -136,17 +136,17 @@ export default function RecommendationsPage() {
               <CardContent className="space-y-4">
                 {/* Summary - No "compatibility score" language */}
                 <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                  <p className="text-sm font-medium">{rec.match.explanation.summary}</p>
+                  <p className="text-sm font-medium">{rec.match.explanation?.summary || "좋은 네트워킹 기회입니다"}</p>
                 </div>
 
-                {/* Common Tags */}
-                {rec.match.explanation.commonTags.length > 0 && (
+                {/* Highlights */}
+                {rec.match.explanation?.highlights && rec.match.explanation.highlights.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">공통 관심사</p>
+                    <p className="text-xs text-muted-foreground mb-2">매칭 포인트</p>
                     <div className="flex flex-wrap gap-1">
-                      {rec.match.explanation.commonTags.slice(0, 5).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
+                      {rec.match.explanation.highlights.slice(0, 3).map((highlight, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {highlight}
                         </Badge>
                       ))}
                     </div>
@@ -154,31 +154,31 @@ export default function RecommendationsPage() {
                 )}
 
                 {/* Match Details */}
-                {rec.match.explanation.details.length > 0 && (
+                {rec.match.explanation?.details && rec.match.explanation.details.length > 0 && (
                   <div className="space-y-2">
                     {rec.match.explanation.details.slice(0, 2).map((detail, idx) => (
                       <div key={idx} className="text-sm text-muted-foreground">
-                        • {detail.reason}
+                        • {detail.label}: {detail.value}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Suggested Topics */}
-                {rec.match.explanation.suggestedTopics.length > 0 && (
+                {/* Conversation Starters */}
+                {rec.match.conversationStarters && rec.match.conversationStarters.length > 0 && (
                   <div className="pt-3 border-t">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                       <MessageCircle className="h-3 w-3" />
                       대화 주제
                     </div>
                     <p className="text-sm">
-                      {rec.match.explanation.suggestedTopics[0]}
+                      {rec.match.conversationStarters[0]}
                     </p>
                   </div>
                 )}
 
                 {/* Hobbies */}
-                {rec.user.hobbies.length > 0 && (
+                {rec.user.hobbies && rec.user.hobbies.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {rec.user.hobbies.slice(0, 4).map((hobby) => (
                       <Badge key={hobby} variant="outline" className="text-xs">
