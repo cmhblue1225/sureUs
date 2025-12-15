@@ -38,15 +38,33 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = createServiceClient();
 
-    // Get user profile
+    // Get user info and profile
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: userProfile } = await (serviceClient
+    const { data: userData } = await (serviceClient
       .from("users")
-      .select("name, hobby_tags")
+      .select("id, name")
       .eq("id", user.id)
       .single() as any);
 
-    if (!userProfile) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: userProfileData } = await (serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single() as any);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: userTags } = await (serviceClient
+      .from("profile_tags")
+      .select("tag_name")
+      .eq("profile_id", userProfileData?.id || "00000000-0000-0000-0000-000000000000") as any);
+
+    const userProfile = {
+      name: userData?.name || "회원",
+      hobby_tags: userTags?.map((t: { tag_name: string }) => t.tag_name) || [],
+    };
+
+    if (!userData) {
       return NextResponse.json(
         { success: false, error: "프로필을 찾을 수 없습니다." },
         { status: 404 }

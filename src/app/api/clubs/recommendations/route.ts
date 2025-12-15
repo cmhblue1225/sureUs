@@ -27,28 +27,30 @@ export async function GET(request: NextRequest) {
 
     const serviceClient = createServiceClient();
 
-    // 1. 사용자 프로필 조회
+    // 1. 사용자 프로필 조회 (users + profiles 조인)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: userProfileData } = await (serviceClient
-      .from("users")
-      .select("id, hobby_tags, mbti, department, job_role, location")
-      .eq("id", user.id)
+      .from("profiles")
+      .select("id, user_id, mbti, department, job_role, office_location")
+      .eq("user_id", user.id)
       .single() as any);
 
-    if (!userProfileData) {
-      return NextResponse.json(
-        { success: false, error: "프로필을 찾을 수 없습니다." },
-        { status: 404 }
-      );
-    }
+    // 사용자 태그 조회
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: userTags } = await (serviceClient
+      .from("profile_tags")
+      .select("tag_name")
+      .eq("profile_id", userProfileData?.id || "00000000-0000-0000-0000-000000000000") as any);
+
+    const userHobbyTags = userTags?.map((t: { tag_name: string }) => t.tag_name) || [];
 
     const userProfile: UserProfile = {
-      id: userProfileData.id,
-      hobby_tags: userProfileData.hobby_tags || [],
-      mbti: userProfileData.mbti,
-      department: userProfileData.department,
-      job_role: userProfileData.job_role,
-      location: userProfileData.location,
+      id: user.id,
+      hobby_tags: userHobbyTags,
+      mbti: userProfileData?.mbti || null,
+      department: userProfileData?.department || null,
+      job_role: userProfileData?.job_role || null,
+      location: userProfileData?.office_location || null,
     };
 
     // 2. 사용자가 가입한 동호회 ID 조회
@@ -125,17 +127,41 @@ export async function GET(request: NextRequest) {
 
     // 7. 회원 프로필 조회 (회원이 있는 동호회에 한해)
     const memberUserIds = [...new Set(clubMembers.map((m) => m.user_id))];
+
+    // 프로필 정보 조회
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: memberProfiles } = await (serviceClient
-      .from("users")
-      .select("id, hobby_tags, mbti, department, job_role, location")
-      .in("id", memberUserIds) as any);
+    const { data: memberProfilesData } = await (serviceClient
+      .from("profiles")
+      .select("id, user_id, mbti, department, job_role, office_location")
+      .in("user_id", memberUserIds.length > 0 ? memberUserIds : ['']) as any);
+
+    // 프로필 ID 목록
+    const profileIds = memberProfilesData?.map((p: { id: string }) => p.id) || [];
+
+    // 태그 정보 조회
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: allMemberTags } = await (serviceClient
+      .from("profile_tags")
+      .select("profile_id, tag_name")
+      .in("profile_id", profileIds.length > 0 ? profileIds : ['']) as any);
+
+    // 프로필 ID별 태그 매핑
+    const tagsByProfile = new Map<string, string[]>();
+    allMemberTags?.forEach((t: { profile_id: string; tag_name: string }) => {
+      const tags = tagsByProfile.get(t.profile_id) || [];
+      tags.push(t.tag_name);
+      tagsByProfile.set(t.profile_id, tags);
+    });
 
     const profileMap = new Map<string, UserProfile>();
-    memberProfiles?.forEach((p: UserProfile) => {
-      profileMap.set(p.id, {
-        ...p,
-        hobby_tags: p.hobby_tags || [],
+    memberProfilesData?.forEach((p: { id: string; user_id: string; mbti: string | null; department: string | null; job_role: string | null; office_location: string | null }) => {
+      profileMap.set(p.user_id, {
+        id: p.user_id,
+        hobby_tags: tagsByProfile.get(p.id) || [],
+        mbti: p.mbti,
+        department: p.department,
+        job_role: p.job_role,
+        location: p.office_location,
       });
     });
 
