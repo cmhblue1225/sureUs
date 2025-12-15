@@ -125,7 +125,12 @@ export default function RecommendationsPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate">{rec.user.name}</CardTitle>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-lg truncate">{rec.user.name}</CardTitle>
+                      <Badge variant="default" className="flex-shrink-0 font-mono">
+                        {Math.round(rec.match.totalScore * 100)}%
+                      </Badge>
+                    </div>
                     <CardDescription className="text-sm">
                       {rec.user.department} · {rec.user.jobRole}
                     </CardDescription>
