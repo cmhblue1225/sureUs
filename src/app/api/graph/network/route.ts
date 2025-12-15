@@ -31,6 +31,30 @@ function parseEmbedding(embedding: unknown): number[] | undefined {
   return undefined;
 }
 
+// 키워드 매칭 함수
+function matchesKeywords(
+  hobbies: string[],
+  keywords: string[],
+  mode: "any" | "all"
+): boolean {
+  if (keywords.length === 0) return true;
+
+  const normalizedHobbies = hobbies.map(h => h.toLowerCase());
+  const normalizedKeywords = keywords.map(k => k.toLowerCase().trim());
+
+  if (mode === "all") {
+    // 모든 키워드가 포함되어야 함
+    return normalizedKeywords.every(keyword =>
+      normalizedHobbies.some(hobby => hobby.includes(keyword))
+    );
+  } else {
+    // 하나라도 포함되면 됨
+    return normalizedKeywords.some(keyword =>
+      normalizedHobbies.some(hobby => hobby.includes(keyword))
+    );
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,6 +62,11 @@ export async function GET(request: Request) {
     const maxNodes = Math.min(parseInt(searchParams.get("maxNodes") || "50"), 100);
     const canvasWidth = parseInt(searchParams.get("width") || "800");
     const canvasHeight = parseInt(searchParams.get("height") || "600");
+
+    // 키워드 필터 파라미터
+    const keywords = searchParams.get("keywords") || "";
+    const filterMode = (searchParams.get("filterMode") || "any") as "any" | "all";
+    const keywordList = keywords ? keywords.split(",").map(k => k.trim()).filter(k => k) : [];
 
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -198,8 +227,16 @@ export async function GET(request: Request) {
       };
     });
 
-    // Filter to only include users related to the current user (above minSimilarity threshold)
+    // Filter to only include users related to the current user (above minSimilarity threshold + keyword filter)
     const relatedUsers = allOtherUsers.filter((otherUser) => {
+      // 키워드 필터 적용
+      if (keywordList.length > 0) {
+        if (!matchesKeywords(otherUser.hobbies, keywordList, filterMode)) {
+          return false;
+        }
+      }
+
+      // 유사도 필터 적용
       const scores = calculateEnhancedMatchScore(
         currentUser,
         otherUser,

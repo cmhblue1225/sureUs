@@ -27,6 +27,7 @@ import {
   type EnhancedUserNodeData,
   type CustomEdgeData,
 } from "@/components/graph";
+import { KeywordFilter } from "@/components/graph/KeywordFilter";
 import { useGraphInteraction } from "@/hooks/useGraphInteraction";
 import type {
   ClusteringResult,
@@ -59,6 +60,10 @@ export default function NetworkPage() {
   const [selectedEdge, setSelectedEdge] = useState<ClusteredEdge | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  // 키워드 필터 상태
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filterMode, setFilterMode] = useState<"any" | "all">("any");
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -74,8 +79,13 @@ export default function NetworkPage() {
     setError(null);
 
     try {
+      // 키워드 파라미터 추가
+      const keywordsParam = selectedTags.length > 0
+        ? `&keywords=${encodeURIComponent(selectedTags.join(","))}&filterMode=${filterMode}`
+        : "";
+
       const response = await fetch(
-        `/api/graph/network?minSimilarity=${minSimilarity}&width=800&height=600`
+        `/api/graph/network?minSimilarity=${minSimilarity}&width=800&height=600${keywordsParam}`
       );
       const data: APIResponse = await response.json();
 
@@ -90,7 +100,7 @@ export default function NetworkPage() {
     } finally {
       setLoading(false);
     }
-  }, [minSimilarity]);
+  }, [minSimilarity, selectedTags, filterMode]);
 
   useEffect(() => {
     fetchNetwork();
@@ -302,6 +312,17 @@ export default function NetworkPage() {
             />
           )}
 
+          {/* Keyword Filter */}
+          <Card>
+            <CardContent className="pt-6">
+              <KeywordFilter
+                selectedTags={selectedTags}
+                onTagsChange={setSelectedTags}
+                filterMode={filterMode}
+                onFilterModeChange={setFilterMode}
+              />
+            </CardContent>
+          </Card>
 
           {/* Selected Edge Info */}
           {selectedEdge && (
