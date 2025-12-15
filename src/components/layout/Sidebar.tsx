@@ -65,7 +65,14 @@ export function Sidebar() {
         isCollapsed ? "px-2" : "px-3"
       )}>
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // Special handling for profile: /profile/[id] is viewing OTHER user's profile
+          // Only /profile and /profile/edit should highlight "내 프로필"
+          let isActive: boolean;
+          if (item.href === "/profile") {
+            isActive = pathname === "/profile" || pathname === "/profile/edit";
+          } else {
+            isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          }
           return (
             <Link
               key={item.name}
