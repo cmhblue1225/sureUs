@@ -90,9 +90,22 @@ export default function ClubChat({ clubId, currentUserId, isLeader }: ClubChatPr
 
           if (data) {
             setMessages((prev) => {
-              // Check if message already exists
+              // Check if message already exists (by real ID)
               if (prev.some((m) => m.id === data.id)) {
                 return prev;
+              }
+              // Check if optimistic message exists (same content, sender, similar time)
+              // Replace optimistic with real message
+              const optimisticIndex = prev.findIndex(
+                (m) =>
+                  m.id.startsWith("optimistic-") &&
+                  m.sender_id === data.sender_id &&
+                  m.content === data.content
+              );
+              if (optimisticIndex !== -1) {
+                const updated = [...prev];
+                updated[optimisticIndex] = data;
+                return updated;
               }
               return [...prev, data];
             });
@@ -146,24 +159,57 @@ export default function ClubChat({ clubId, currentUserId, isLeader }: ClubChatPr
     e.preventDefault();
     if (!newMessage.trim() || isSending) return;
 
+    const messageContent = newMessage.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+
+    // Optimistic update - 즉시 메시지 표시
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      club_id: clubId,
+      sender_id: currentUserId,
+      content: messageContent,
+      type: "message",
+      created_at: new Date().toISOString(),
+      sender: {
+        id: currentUserId,
+        name: "나", // 임시 이름
+        avatar_url: null,
+      },
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setNewMessage("");
+    setTimeout(scrollToBottom, 50);
+
     setIsSending(true);
     try {
       const response = await fetch(`/api/clubs/${clubId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newMessage.trim() }),
+        body: JSON.stringify({ content: messageContent }),
       });
       const result = await response.json();
 
       if (!result.success) {
         console.error("Failed to send message:", result.error);
+        // 실패 시 optimistic 메시지 제거
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        setNewMessage(messageContent); // 입력 복원
         return;
       }
 
-      setNewMessage("");
-      // Message will be added via realtime subscription
+      // 성공 시 optimistic 메시지를 실제 메시지로 교체
+      // API는 data: message 형태로 반환
+      if (result.data) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === optimisticId ? result.data : m))
+        );
+      }
     } catch (error) {
       console.error("Send message error:", error);
+      // 에러 시 optimistic 메시지 제거
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setNewMessage(messageContent); // 입력 복원
     } finally {
       setIsSending(false);
     }
