@@ -1,14 +1,28 @@
 import { z } from "zod";
 
+const visibilityLevelSchema = z.enum(["public", "department", "private"]);
+
 export const visibilitySettingsSchema = z.object({
-  department: z.enum(["public", "department", "private"]),
-  job_role: z.enum(["public", "department", "private"]),
-  office_location: z.enum(["public", "department", "private"]),
-  mbti: z.enum(["public", "department", "private"]),
-  hobbies: z.enum(["public", "department", "private"]),
-  collaboration_style: z.enum(["public", "department", "private"]),
-  strengths: z.enum(["public", "department", "private"]),
-  preferred_people_type: z.enum(["public", "department", "private"]),
+  department: visibilityLevelSchema,
+  job_role: visibilityLevelSchema,
+  office_location: visibilityLevelSchema,
+  mbti: visibilityLevelSchema,
+  hobbies: visibilityLevelSchema,
+  collaboration_style: visibilityLevelSchema,
+  strengths: visibilityLevelSchema,
+  preferred_people_type: visibilityLevelSchema,
+  // 새 필드
+  living_location: visibilityLevelSchema,
+  hometown: visibilityLevelSchema,
+  education: visibilityLevelSchema,
+  work_description: visibilityLevelSchema,
+  tech_stack: visibilityLevelSchema,
+  favorite_food: visibilityLevelSchema,
+  age_range: visibilityLevelSchema,
+  interests: visibilityLevelSchema,
+  career_goals: visibilityLevelSchema,
+  certifications: visibilityLevelSchema,
+  languages: visibilityLevelSchema,
 });
 
 export const profileFormSchema = z.object({
@@ -20,6 +34,19 @@ export const profileFormSchema = z.object({
   collaborationStyle: z.string().optional(),
   strengths: z.string().optional(),
   preferredPeopleType: z.string().optional(),
+  // 새 필드
+  livingLocation: z.string().optional(),
+  hometown: z.string().optional(),
+  education: z.string().optional(),
+  workDescription: z.string().optional(),
+  techStack: z.string().optional(),
+  favoriteFood: z.string().optional(),
+  ageRange: z.string().optional(),
+  interests: z.string().optional(),
+  careerGoals: z.string().optional(),
+  certifications: z.string().optional(),
+  languages: z.string().optional(),
+  // 설정
   visibilitySettings: visibilitySettingsSchema,
 });
 

@@ -9,6 +9,19 @@ export interface ProfileFormData {
   collaborationStyle?: string;
   strengths?: string;
   preferredPeopleType?: string;
+  // 새 필드
+  livingLocation?: string;
+  hometown?: string;
+  education?: string;
+  workDescription?: string;
+  techStack?: string;
+  favoriteFood?: string;
+  ageRange?: string;
+  interests?: string;
+  careerGoals?: string;
+  certifications?: string;
+  languages?: string;
+  // 설정
   visibilitySettings: VisibilitySettings;
 }
 
@@ -26,6 +39,19 @@ export interface UserProfile {
   collaborationStyle?: string;
   strengths?: string;
   preferredPeopleType?: string;
+  // 새 필드
+  livingLocation?: string;
+  hometown?: string;
+  education?: string;
+  workDescription?: string;
+  techStack?: string;
+  favoriteFood?: string;
+  ageRange?: string;
+  interests?: string;
+  careerGoals?: string;
+  certifications?: string;
+  languages?: string;
+  // 시스템 필드
   visibilitySettings: VisibilitySettings;
   isProfileComplete: boolean;
   createdAt: string;

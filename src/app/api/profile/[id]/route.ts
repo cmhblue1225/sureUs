@@ -12,6 +12,18 @@ interface VisibilitySettings {
   strengths?: VisibilityLevel;
   preferred_people_type?: VisibilityLevel;
   mbti?: VisibilityLevel;
+  // 새 필드
+  living_location?: VisibilityLevel;
+  hometown?: VisibilityLevel;
+  education?: VisibilityLevel;
+  work_description?: VisibilityLevel;
+  tech_stack?: VisibilityLevel;
+  favorite_food?: VisibilityLevel;
+  age_range?: VisibilityLevel;
+  interests?: VisibilityLevel;
+  career_goals?: VisibilityLevel;
+  certifications?: VisibilityLevel;
+  languages?: VisibilityLevel;
 }
 
 // GET /api/profile/[id] - Get a user's profile
@@ -156,6 +168,19 @@ export async function GET(
       collaborationStyle: canView("collaboration_style") ? profile.collaboration_style : null,
       strengths: canView("strengths") ? profile.strengths : null,
       preferredPeopleType: canView("preferred_people_type") ? profile.preferred_people_type : null,
+      // 새 필드 (visibility 적용)
+      livingLocation: canView("living_location") ? profile.living_location : null,
+      hometown: canView("hometown") ? profile.hometown : null,
+      education: canView("education") ? profile.education : null,
+      workDescription: canView("work_description") ? profile.work_description : null,
+      techStack: canView("tech_stack") ? profile.tech_stack : null,
+      favoriteFood: canView("favorite_food") ? profile.favorite_food : null,
+      ageRange: canView("age_range") ? profile.age_range : null,
+      interests: canView("interests") ? profile.interests : null,
+      careerGoals: canView("career_goals") ? profile.career_goals : null,
+      certifications: canView("certifications") ? profile.certifications : null,
+      languages: canView("languages") ? profile.languages : null,
+      // 메타 정보
       isProfileComplete: profile.is_profile_complete,
       isOwnProfile,
       isSameDepartment,

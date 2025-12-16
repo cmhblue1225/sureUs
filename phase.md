@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2025-12-16
 
-## 현재 Phase: 10 완료 (대시보드 기능 확장 + 네트워크 개선)
+## 현재 Phase: 13 완료 (온보딩 플로우 구현)
 
 ---
 
@@ -109,6 +109,21 @@
 - [x] 취미 태그 시스템
 - [x] 임베딩 자동 생성
 - [x] 타 사용자 프로필 보기
+- [x] 11개 확장 프로필 필드 (개인정보, 업무정보, 관심사, 커리어)
+- [x] 태그 직접입력 기능
+- [x] 필드별 공개 범위 설정
+- [x] AI 태그 추천 기능
+- [x] AI 프로필 작성 도움 기능 (협업스타일, 강점, 선호동료, 업무설명, 커리어목표)
+
+### 온보딩
+- [x] 8단계 온보딩 wizard
+- [x] Framer Motion 애니메이션
+- [x] MBTI 선택 카드 (4x4 그리드)
+- [x] 취미 태그 다중 선택 (최대 10개)
+- [x] AI 도움 버튼 통합
+- [x] 그라데이션 배경 + Glass morphism
+- [x] 진행률 바 (상단 고정)
+- [x] 회원가입 후 온보딩 리다이렉트
 
 ### 검색
 - [x] 동료 검색 API
@@ -168,6 +183,200 @@
 | 2025-12-16 | 10 | 의미 검색 정확도 개선 (프로필 필드 중심 매칭, 확장 최소화) |
 | 2025-12-16 | 10 | 의미 검색 모드 옵션 추가 (정확하게 찾기 / 넓게 찾기) |
 | 2025-12-16 | 10 | 대시보드 추천 동료 Enhanced Algorithm 적용 (7요소 점수 알고리즘) |
+| 2025-12-16 | 11 | 프로필 필드 확장 (11개 필드 추가, 태그 직접입력, 임베딩 연동) |
+| 2025-12-16 | 12 | 프로필 LLM 도움 기능 (AI 태그 추천, AI 텍스트 생성) |
+| 2025-12-16 | 13 | 온보딩 플로우 구현 (8단계 wizard, Framer Motion 애니메이션) |
+
+---
+
+## Phase 13: 온보딩 플로우 구현
+**상태: 완료**
+
+### 13-1. 기반 설정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Framer Motion 설치 | ✅ 완료 | `package.json` |
+| 애니메이션 유틸리티 | ✅ 완료 | `src/lib/animations.ts` |
+| 온보딩 타입 정의 | ✅ 완료 | `src/types/onboarding.ts` |
+
+### 13-2. 온보딩 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| ProgressBar | ✅ 완료 | `src/components/onboarding/ProgressBar.tsx` |
+| StepWelcome | ✅ 완료 | `src/components/onboarding/StepWelcome.tsx` |
+| StepBasicInfo | ✅ 완료 | `src/components/onboarding/StepBasicInfo.tsx` |
+| MbtiCard | ✅ 완료 | `src/components/onboarding/MbtiCard.tsx` |
+| StepMbti | ✅ 완료 | `src/components/onboarding/StepMbti.tsx` |
+| StepPersonalInfo | ✅ 완료 | `src/components/onboarding/StepPersonalInfo.tsx` |
+| StepWorkInfo | ✅ 완료 | `src/components/onboarding/StepWorkInfo.tsx` |
+| HobbyTag | ✅ 완료 | `src/components/onboarding/HobbyTag.tsx` |
+| StepHobbies | ✅ 완료 | `src/components/onboarding/StepHobbies.tsx` |
+| StepIntroduction | ✅ 완료 | `src/components/onboarding/StepIntroduction.tsx` |
+| StepComplete | ✅ 완료 | `src/components/onboarding/StepComplete.tsx` |
+| OnboardingWizard | ✅ 완료 | `src/components/onboarding/OnboardingWizard.tsx` |
+
+### 13-3. 라우팅 및 인프라
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 온보딩 페이지 | ✅ 완료 | `src/app/(auth)/onboarding/page.tsx` |
+| 회원가입 리다이렉트 | ✅ 완료 | `src/app/(auth)/signup/page.tsx` |
+| 미들웨어 업데이트 | ✅ 완료 | `src/lib/supabase/middleware.ts` |
+| Profile API PUT 메서드 | ✅ 완료 | `src/app/api/profile/route.ts` |
+| globals.css 배경 스타일 | ✅ 완료 | `src/app/globals.css` |
+| onboarding_completed 컬럼 | ✅ 완료 | Supabase MCP |
+
+### 온보딩 단계 (8단계)
+| 단계 | 화면 | 필드 | 필수 여부 |
+|------|------|------|----------|
+| 0 | Welcome | 환영 메시지, 서비스 소개 | - |
+| 1 | 기본 정보 | 부서, 직군, 근무지 | **필수** |
+| 2 | MBTI | MBTI 16개 카드 선택 | 선택 |
+| 3 | 개인 정보 | 연령대, 사는 곳, 고향, 학교 | 선택 |
+| 4 | 업무 정보 | 업무 설명, 기술 스택, 자격증, 언어 | 선택 |
+| 5 | 취미/관심사 | 취미 태그, 관심 분야, 좋아하는 음식 | 선택 |
+| 6 | 자기 소개 | 협업 스타일, 강점, 선호 동료, 커리어 목표 | 선택 |
+| 7 | 완료 | 프로필 미리보기, 완료 축하 | - |
+
+### 기능 요약
+- **Framer Motion 애니메이션**: 페이지 전환, 카드 등장 stagger, 선택 효과, 진행률 바
+- **8단계 wizard**: 단계별 진행으로 사용자 부담 감소
+- **필수/선택 구분**: Step 1만 필수, 나머지는 건너뛰기 가능
+- **AI 도움 버튼**: 업무 설명, 협업 스타일, 강점, 선호 동료, 커리어 목표 필드
+- **그라데이션 배경**: 전체 화면 animated gradient + Glass morphism 카드
+- **진행률 표시**: 상단 고정 프로그레스 바
+- **Set 기반 다중 선택**: 취미 태그 최대 10개 선택, 직접 입력 가능
+- **MBTI 카드 그리드**: 4x4 레이아웃, 선택 시 체크마크 애니메이션
+- **Spring 트랜지션**: 자연스러운 물리 기반 애니메이션
+
+### 사용자 플로우
+```
+/signup (회원가입)
+    ↓
+/onboarding (8단계 wizard)
+    ↓ Step 0: 환영
+    ↓ Step 1: 기본 정보 (필수)
+    ↓ Step 2-6: 선택 정보
+    ↓ Step 7: 완료
+    ↓ (프로필 저장, onboarding_completed = true)
+/dashboard (대시보드)
+```
+
+---
+
+## Phase 12: 프로필 LLM 도움 기능
+**상태: 완료**
+
+### 12-1. 프로필 도움 모듈
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| ProfileContext 인터페이스 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| suggestHobbyTags 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generateCollaborationStyle 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generateStrengths 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generatePreferredPeopleType 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generateWorkDescription 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generateCareerGoals 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+| generateProfileText 통합 함수 | ✅ 완료 | `src/lib/anthropic/profileAssistant.ts` |
+
+### 12-2. API 엔드포인트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 태그 추천 API | ✅ 완료 | `src/app/api/profile/suggest-tags/route.ts` |
+| 텍스트 생성 API | ✅ 완료 | `src/app/api/profile/generate-text/route.ts` |
+
+### 12-3. UI 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| LLMAssistButton 컴포넌트 | ✅ 완료 | `src/components/profile/LLMAssistButton.tsx` |
+| TagSuggestButton 컴포넌트 | ✅ 완료 | `src/components/profile/TagSuggestButton.tsx` |
+| ProfileForm 통합 | ✅ 완료 | `src/components/profile/ProfileForm.tsx` |
+
+### 기능 요약
+- **AI 태그 추천**: 프로필 컨텍스트 기반으로 취미 태그 5개 추천
+  - 부서, 직군, MBTI, 기술스택 등 기존 프로필 정보 활용
+  - 이미 선택한 태그와 중복되지 않는 태그 추천
+  - 추천 이유 설명 제공
+
+- **AI 텍스트 생성**: 5개 텍스트 필드 작성 도움
+  - 협업 스타일 (collaborationStyle)
+  - 장점/강점 (strengths)
+  - 선호하는 동료 유형 (preferredPeopleType)
+  - 부서에서 하는 일 (workDescription)
+  - 커리어 목표 (careerGoals)
+  - 기본 제안 + 2개 대안 제공
+  - 사용자가 선택 후 직접 수정 가능
+
+- **UI/UX**:
+  - 각 필드 라벨 옆 "AI 도움" 버튼
+  - 모달 다이얼로그로 제안 내용 표시
+  - "다시 생성" 버튼으로 재생성 가능
+  - 선택 적용 또는 취소 옵션
+
+> **참고**: Claude API (ANTHROPIC_API_KEY) 필요
+
+---
+
+## Phase 11: 프로필 필드 확장
+**상태: 완료**
+
+### 11-1. 데이터베이스 스키마 확장
+| 작업 | 상태 | 파일/설명 |
+|------|------|------|
+| profiles 테이블 11개 컬럼 추가 | ✅ 완료 | Supabase MCP - `add_profile_extended_fields` |
+| VisibilitySettings 확장 | ✅ 완료 | `src/types/database.ts` |
+
+### 11-2. 타입 및 검증 스키마
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| ProfileRow 타입 업데이트 | ✅ 완료 | `src/types/database.ts` |
+| UserProfile 인터페이스 업데이트 | ✅ 완료 | `src/types/profile.ts` |
+| profileFormSchema 확장 | ✅ 완료 | `src/lib/utils/validation.ts` |
+| visibilitySettingsSchema 확장 | ✅ 완료 | `src/lib/utils/validation.ts` |
+
+### 11-3. API 업데이트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Profile 생성/수정 API | ✅ 완료 | `src/app/api/profile/route.ts` |
+| 내 프로필 조회 API | ✅ 완료 | `src/app/api/profile/me/route.ts` |
+| 타 사용자 프로필 API (visibility 적용) | ✅ 완료 | `src/app/api/profile/[id]/route.ts` |
+
+### 11-4. UI 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| TagInput 직접입력 기능 | ✅ 완료 | `src/components/profile/TagInput.tsx` |
+| ProfileForm 새 섹션 추가 | ✅ 완료 | `src/components/profile/ProfileForm.tsx` |
+| 내 프로필 페이지 업데이트 | ✅ 완료 | `src/app/(main)/profile/page.tsx` |
+| 타 사용자 프로필 페이지 업데이트 | ✅ 완료 | `src/app/(main)/profile/[id]/page.tsx` |
+
+### 11-5. 임베딩 및 매칭 알고리즘
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| generateProfileEmbeddings 확장 | ✅ 완료 | `src/lib/openai/embeddings.ts` |
+| SemanticSearchCandidate 타입 확장 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 텍스트 매칭 검색 대상 확장 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| semantic-search API 후보 객체 업데이트 | ✅ 완료 | `src/app/api/graph/semantic-search/route.ts` |
+
+### 추가된 프로필 필드 (11개)
+| 필드명 | DB 컬럼 | 카테고리 |
+|--------|---------|----------|
+| 연령대 | `age_range` | 개인 정보 |
+| 사는 곳 | `living_location` | 개인 정보 |
+| 고향 | `hometown` | 개인 정보 |
+| 학교 | `education` | 개인 정보 |
+| 부서에서 하는 일 | `work_description` | 업무 정보 |
+| 기술 스택 | `tech_stack` | 업무 정보 |
+| 자격증 | `certifications` | 업무 정보 |
+| 언어 능력 | `languages` | 업무 정보 |
+| 관심 분야 | `interests` | 취미/관심사 |
+| 좋아하는 음식 | `favorite_food` | 취미/관심사 |
+| 커리어 목표 | `career_goals` | 자기 소개 |
+
+### 기능 요약
+- **11개 새 프로필 필드**: 개인 정보, 업무 정보, 취미/관심사, 커리어 목표 카테고리
+- **태그 직접입력**: 추천 태그 선택 + 자유 입력 가능 (Enter 키 또는 + 버튼)
+- **필드별 공개 범위 설정**: 전체 공개/부서 내/비공개 선택 가능
+- **임베딩 연동**: workDescription, techStack, interests, careerGoals 필드를 combined_embedding에 포함
+- **검색 연동**: 새 필드들이 의미 검색 텍스트 매칭 대상에 포함
 
 ---
 

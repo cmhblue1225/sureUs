@@ -83,6 +83,19 @@ export async function GET() {
         collaborationStyle: profile?.collaboration_style || null,
         strengths: profile?.strengths || null,
         preferredPeopleType: profile?.preferred_people_type || null,
+        // 새 필드
+        livingLocation: profile?.living_location || null,
+        hometown: profile?.hometown || null,
+        education: profile?.education || null,
+        workDescription: profile?.work_description || null,
+        techStack: profile?.tech_stack || null,
+        favoriteFood: profile?.favorite_food || null,
+        ageRange: profile?.age_range || null,
+        interests: profile?.interests || null,
+        careerGoals: profile?.career_goals || null,
+        certifications: profile?.certifications || null,
+        languages: profile?.languages || null,
+        // 설정
         visibilitySettings: profile?.visibility_settings || {
           department: "public",
           job_role: "public",
@@ -92,6 +105,18 @@ export async function GET() {
           collaboration_style: "public",
           strengths: "public",
           preferred_people_type: "public",
+          // 새 필드 기본값
+          living_location: "public",
+          hometown: "public",
+          education: "public",
+          work_description: "public",
+          tech_stack: "public",
+          favorite_food: "public",
+          age_range: "public",
+          interests: "public",
+          career_goals: "public",
+          certifications: "public",
+          languages: "public",
         },
         isProfileComplete: profile?.is_profile_complete || false,
         preferences: preferences

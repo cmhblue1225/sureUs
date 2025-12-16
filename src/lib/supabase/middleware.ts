@@ -37,8 +37,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes
-  const protectedPaths = ["/dashboard", "/profile", "/search", "/recommendations", "/network", "/settings"];
+  // Protected routes (require login)
+  const protectedPaths = ["/dashboard", "/profile", "/search", "/recommendations", "/network", "/settings", "/onboarding", "/clubs"];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
@@ -48,6 +48,9 @@ export async function updateSession(request: NextRequest) {
   const isAuthOnlyPath = authOnlyPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
+
+  // Check if current path is onboarding
+  const isOnboardingPath = request.nextUrl.pathname.startsWith("/onboarding");
 
   if (!user && isProtectedPath) {
     // Redirect to login if trying to access protected route without auth

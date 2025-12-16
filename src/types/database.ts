@@ -17,6 +17,18 @@ export interface VisibilitySettings {
   collaboration_style: VisibilityLevel;
   strengths: VisibilityLevel;
   preferred_people_type: VisibilityLevel;
+  // 새 필드
+  living_location: VisibilityLevel;
+  hometown: VisibilityLevel;
+  education: VisibilityLevel;
+  work_description: VisibilityLevel;
+  tech_stack: VisibilityLevel;
+  favorite_food: VisibilityLevel;
+  age_range: VisibilityLevel;
+  interests: VisibilityLevel;
+  career_goals: VisibilityLevel;
+  certifications: VisibilityLevel;
+  languages: VisibilityLevel;
 }
 
 export interface Database {
@@ -62,8 +74,22 @@ export interface Database {
           collaboration_style: string | null;
           strengths: string | null;
           preferred_people_type: string | null;
+          // 새 필드
+          living_location: string | null;
+          hometown: string | null;
+          education: string | null;
+          work_description: string | null;
+          tech_stack: string | null;
+          favorite_food: string | null;
+          age_range: string | null;
+          interests: string | null;
+          career_goals: string | null;
+          certifications: string | null;
+          languages: string | null;
+          // 시스템 필드
           visibility_settings: VisibilitySettings;
           is_profile_complete: boolean;
+          onboarding_completed: boolean | null;
           created_at: string;
           updated_at: string;
         };
@@ -77,8 +103,22 @@ export interface Database {
           collaboration_style?: string | null;
           strengths?: string | null;
           preferred_people_type?: string | null;
+          // 새 필드
+          living_location?: string | null;
+          hometown?: string | null;
+          education?: string | null;
+          work_description?: string | null;
+          tech_stack?: string | null;
+          favorite_food?: string | null;
+          age_range?: string | null;
+          interests?: string | null;
+          career_goals?: string | null;
+          certifications?: string | null;
+          languages?: string | null;
+          // 시스템 필드
           visibility_settings?: VisibilitySettings;
           is_profile_complete?: boolean;
+          onboarding_completed?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -92,8 +132,22 @@ export interface Database {
           collaboration_style?: string | null;
           strengths?: string | null;
           preferred_people_type?: string | null;
+          // 새 필드
+          living_location?: string | null;
+          hometown?: string | null;
+          education?: string | null;
+          work_description?: string | null;
+          tech_stack?: string | null;
+          favorite_food?: string | null;
+          age_range?: string | null;
+          interests?: string | null;
+          career_goals?: string | null;
+          certifications?: string | null;
+          languages?: string | null;
+          // 시스템 필드
           visibility_settings?: VisibilitySettings;
           is_profile_complete?: boolean;
+          onboarding_completed?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };

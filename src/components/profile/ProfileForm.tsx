@@ -17,6 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TagInput } from "./TagInput";
 import { VisibilitySelector } from "./VisibilitySelector";
 import { AvatarUpload } from "./AvatarUpload";
+import { LLMAssistButton } from "./LLMAssistButton";
+import { TagSuggestButton } from "./TagSuggestButton";
 import { DEPARTMENTS } from "@/lib/constants/departments";
 import { JOB_ROLES } from "@/lib/constants/jobRoles";
 import { OFFICE_LOCATIONS } from "@/lib/constants/locations";
@@ -35,7 +37,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
   const [error, setError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentAvatarUrl || null);
 
-  // Form state
+  // Form state - 기본 정보
   const [department, setDepartment] = useState(initialData?.department || "");
   const [jobRole, setJobRole] = useState(initialData?.jobRole || "");
   const [officeLocation, setOfficeLocation] = useState(initialData?.officeLocation || "");
@@ -44,6 +46,19 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
   const [collaborationStyle, setCollaborationStyle] = useState(initialData?.collaborationStyle || "");
   const [strengths, setStrengths] = useState(initialData?.strengths || "");
   const [preferredPeopleType, setPreferredPeopleType] = useState(initialData?.preferredPeopleType || "");
+
+  // Form state - 새 필드
+  const [livingLocation, setLivingLocation] = useState(initialData?.livingLocation || "");
+  const [hometown, setHometown] = useState(initialData?.hometown || "");
+  const [education, setEducation] = useState(initialData?.education || "");
+  const [workDescription, setWorkDescription] = useState(initialData?.workDescription || "");
+  const [techStack, setTechStack] = useState(initialData?.techStack || "");
+  const [favoriteFood, setFavoriteFood] = useState(initialData?.favoriteFood || "");
+  const [ageRange, setAgeRange] = useState(initialData?.ageRange || "");
+  const [interests, setInterests] = useState(initialData?.interests || "");
+  const [careerGoals, setCareerGoals] = useState(initialData?.careerGoals || "");
+  const [certifications, setCertifications] = useState(initialData?.certifications || "");
+  const [languages, setLanguages] = useState(initialData?.languages || "");
 
   // Visibility settings
   const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>(
@@ -56,6 +71,18 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
       collaboration_style: "public",
       strengths: "public",
       preferred_people_type: "public",
+      // 새 필드 기본값
+      living_location: "public",
+      hometown: "public",
+      education: "public",
+      work_description: "public",
+      tech_stack: "public",
+      favorite_food: "public",
+      age_range: "public",
+      interests: "public",
+      career_goals: "public",
+      certifications: "public",
+      languages: "public",
     }
   );
 
@@ -81,6 +108,19 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
           collaborationStyle: collaborationStyle || undefined,
           strengths: strengths || undefined,
           preferredPeopleType: preferredPeopleType || undefined,
+          // 새 필드
+          livingLocation: livingLocation || undefined,
+          hometown: hometown || undefined,
+          education: education || undefined,
+          workDescription: workDescription || undefined,
+          techStack: techStack || undefined,
+          favoriteFood: favoriteFood || undefined,
+          ageRange: ageRange || undefined,
+          interests: interests || undefined,
+          careerGoals: careerGoals || undefined,
+          certifications: certifications || undefined,
+          languages: languages || undefined,
+          // 설정
           visibilitySettings,
         }),
       });
@@ -227,14 +267,192 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
         </CardContent>
       </Card>
 
+      {/* Personal Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>개인 정보</CardTitle>
+          <CardDescription>나에 대해 더 알려주세요 (선택)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Age Range */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ageRange">연령대</Label>
+              <VisibilitySelector
+                value={visibilitySettings.age_range}
+                onChange={(v) => updateVisibility("age_range", v)}
+              />
+            </div>
+            <Input
+              id="ageRange"
+              placeholder="예: 20대 후반, 30대 초반"
+              value={ageRange}
+              onChange={(e) => setAgeRange(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Living Location */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="livingLocation">사는 곳</Label>
+              <VisibilitySelector
+                value={visibilitySettings.living_location}
+                onChange={(v) => updateVisibility("living_location", v)}
+              />
+            </div>
+            <Input
+              id="livingLocation"
+              placeholder="예: 서울 강남구, 경기 성남시"
+              value={livingLocation}
+              onChange={(e) => setLivingLocation(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Hometown */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hometown">고향</Label>
+              <VisibilitySelector
+                value={visibilitySettings.hometown}
+                onChange={(v) => updateVisibility("hometown", v)}
+              />
+            </div>
+            <Input
+              id="hometown"
+              placeholder="예: 부산, 대구, 서울"
+              value={hometown}
+              onChange={(e) => setHometown(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Education */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="education">학교</Label>
+              <VisibilitySelector
+                value={visibilitySettings.education}
+                onChange={(v) => updateVisibility("education", v)}
+              />
+            </div>
+            <Input
+              id="education"
+              placeholder="예: 서울대학교 컴퓨터공학과"
+              value={education}
+              onChange={(e) => setEducation(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Work Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>업무 정보</CardTitle>
+          <CardDescription>업무 관련 정보를 입력해주세요 (선택)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Work Description */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="workDescription">부서에서 하는 일</Label>
+                <LLMAssistButton
+                  fieldType="workDescription"
+                  onSuggestion={setWorkDescription}
+                  disabled={loading}
+                  additionalContext={{ department, jobRole, techStack }}
+                />
+              </div>
+              <VisibilitySelector
+                value={visibilitySettings.work_description}
+                onChange={(v) => updateVisibility("work_description", v)}
+              />
+            </div>
+            <Textarea
+              id="workDescription"
+              placeholder="예: 프론트엔드 개발을 담당하고 있으며, React와 Next.js를 주로 사용합니다."
+              value={workDescription}
+              onChange={(e) => setWorkDescription(e.target.value)}
+              disabled={loading}
+              rows={3}
+            />
+          </div>
+
+          {/* Tech Stack */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="techStack">기술 스택</Label>
+              <VisibilitySelector
+                value={visibilitySettings.tech_stack}
+                onChange={(v) => updateVisibility("tech_stack", v)}
+              />
+            </div>
+            <Textarea
+              id="techStack"
+              placeholder="예: React, TypeScript, Next.js, Node.js, Python"
+              value={techStack}
+              onChange={(e) => setTechStack(e.target.value)}
+              disabled={loading}
+              rows={2}
+            />
+          </div>
+
+          {/* Certifications */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="certifications">자격증</Label>
+              <VisibilitySelector
+                value={visibilitySettings.certifications}
+                onChange={(v) => updateVisibility("certifications", v)}
+              />
+            </div>
+            <Input
+              id="certifications"
+              placeholder="예: 정보처리기사, AWS Solutions Architect"
+              value={certifications}
+              onChange={(e) => setCertifications(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Languages */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="languages">언어 능력</Label>
+              <VisibilitySelector
+                value={visibilitySettings.languages}
+                onChange={(v) => updateVisibility("languages", v)}
+              />
+            </div>
+            <Input
+              id="languages"
+              placeholder="예: 영어 (비즈니스), 일본어 (초급)"
+              value={languages}
+              onChange={(e) => setLanguages(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Hobbies/Interests */}
       <Card>
         <CardHeader>
           <CardTitle>취미/관심사</CardTitle>
-          <CardDescription>나를 표현하는 태그를 선택해주세요 (최대 10개)</CardDescription>
+          <CardDescription>나를 표현하는 태그를 선택하거나 직접 입력해주세요 (최대 10개)</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-end">
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TagSuggestButton
+              existingTags={hobbies}
+              maxTags={10}
+              onAddTags={(newTags) => setHobbies([...hobbies, ...newTags])}
+              disabled={loading}
+            />
             <VisibilitySelector
               value={visibilitySettings.hobbies}
               onChange={(v) => updateVisibility("hobbies", v)}
@@ -246,6 +464,43 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
             maxTags={10}
             disabled={loading}
           />
+
+          {/* Interests */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="interests">관심 분야</Label>
+              <VisibilitySelector
+                value={visibilitySettings.interests}
+                onChange={(v) => updateVisibility("interests", v)}
+              />
+            </div>
+            <Textarea
+              id="interests"
+              placeholder="예: AI/ML, 스타트업, 여행, 요리, 사진"
+              value={interests}
+              onChange={(e) => setInterests(e.target.value)}
+              disabled={loading}
+              rows={2}
+            />
+          </div>
+
+          {/* Favorite Food */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="favoriteFood">좋아하는 음식</Label>
+              <VisibilitySelector
+                value={visibilitySettings.favorite_food}
+                onChange={(v) => updateVisibility("favorite_food", v)}
+              />
+            </div>
+            <Input
+              id="favoriteFood"
+              placeholder="예: 한식, 이탈리안, 디저트, 커피"
+              value={favoriteFood}
+              onChange={(e) => setFavoriteFood(e.target.value)}
+              disabled={loading}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -261,7 +516,15 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
           {/* Collaboration Style */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="collaborationStyle">협업 스타일</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="collaborationStyle">협업 스타일</Label>
+                <LLMAssistButton
+                  fieldType="collaborationStyle"
+                  onSuggestion={setCollaborationStyle}
+                  disabled={loading}
+                  additionalContext={{ department, jobRole, mbti, workDescription, techStack }}
+                />
+              </div>
               <VisibilitySelector
                 value={visibilitySettings.collaboration_style}
                 onChange={(v) => updateVisibility("collaboration_style", v)}
@@ -280,7 +543,15 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
           {/* Strengths */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="strengths">장점/강점</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="strengths">장점/강점</Label>
+                <LLMAssistButton
+                  fieldType="strengths"
+                  onSuggestion={setStrengths}
+                  disabled={loading}
+                  additionalContext={{ department, jobRole, mbti, workDescription, techStack, collaborationStyle }}
+                />
+              </div>
               <VisibilitySelector
                 value={visibilitySettings.strengths}
                 onChange={(v) => updateVisibility("strengths", v)}
@@ -299,7 +570,15 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
           {/* Preferred People Type */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="preferredPeopleType">선호하는 동료 유형</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="preferredPeopleType">선호하는 동료 유형</Label>
+                <LLMAssistButton
+                  fieldType="preferredPeopleType"
+                  onSuggestion={setPreferredPeopleType}
+                  disabled={loading}
+                  additionalContext={{ department, jobRole, mbti, collaborationStyle, strengths }}
+                />
+              </div>
               <VisibilitySelector
                 value={visibilitySettings.preferred_people_type}
                 onChange={(v) => updateVisibility("preferred_people_type", v)}
@@ -310,6 +589,33 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
               placeholder="예: 솔직하게 의견을 나눌 수 있는 분, 새로운 것에 도전하는 것을 두려워하지 않는 분과 함께 일하고 싶습니다."
               value={preferredPeopleType}
               onChange={(e) => setPreferredPeopleType(e.target.value)}
+              disabled={loading}
+              rows={3}
+            />
+          </div>
+
+          {/* Career Goals */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="careerGoals">커리어 목표</Label>
+                <LLMAssistButton
+                  fieldType="careerGoals"
+                  onSuggestion={setCareerGoals}
+                  disabled={loading}
+                  additionalContext={{ department, jobRole, workDescription, techStack, strengths }}
+                />
+              </div>
+              <VisibilitySelector
+                value={visibilitySettings.career_goals}
+                onChange={(v) => updateVisibility("career_goals", v)}
+              />
+            </div>
+            <Textarea
+              id="careerGoals"
+              placeholder="예: 향후 프로덕트 매니저로 성장하고 싶습니다. 기술적 역량과 비즈니스 이해력을 균형있게 갖추고 싶습니다."
+              value={careerGoals}
+              onChange={(e) => setCareerGoals(e.target.value)}
               disabled={loading}
               rows={3}
             />

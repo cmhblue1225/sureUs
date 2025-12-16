@@ -93,3 +93,29 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* Onboarding gradient background */
+.onboarding-bg {
+  background: linear-gradient(
+    135deg,
+    hsl(12 90% 64%) 0%,
+    hsl(350 80% 55%) 25%,
+    hsl(280 70% 50%) 50%,
+    hsl(220 80% 55%) 75%,
+    hsl(174 60% 45%) 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

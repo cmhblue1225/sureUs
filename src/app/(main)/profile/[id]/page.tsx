@@ -15,6 +15,13 @@ import {
   Loader2,
   Lock,
   MessageCircle,
+  Home,
+  GraduationCap,
+  Code,
+  Target,
+  Utensils,
+  Calendar,
+  MessageSquare,
 } from "lucide-react";
 
 interface ProfileData {
@@ -30,6 +37,19 @@ interface ProfileData {
   collaborationStyle?: string;
   strengths?: string;
   preferredPeopleType?: string;
+  // 새 필드
+  livingLocation?: string;
+  hometown?: string;
+  education?: string;
+  workDescription?: string;
+  techStack?: string;
+  favoriteFood?: string;
+  ageRange?: string;
+  interests?: string;
+  careerGoals?: string;
+  certifications?: string;
+  languages?: string;
+  // 메타
   isProfileComplete: boolean;
   isOwnProfile: boolean;
   isSameDepartment: boolean;
@@ -177,12 +197,94 @@ export default function UserProfilePage() {
         </Card>
       )}
 
+      {/* Personal Info */}
+      {(profile.ageRange || profile.livingLocation || profile.hometown || profile.education) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>개인 정보</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {profile.ageRange && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">연령대:</span>
+                <span className="text-sm text-muted-foreground">{profile.ageRange}</span>
+              </div>
+            )}
+            {profile.livingLocation && (
+              <div className="flex items-center gap-2">
+                <Home className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">사는 곳:</span>
+                <span className="text-sm text-muted-foreground">{profile.livingLocation}</span>
+              </div>
+            )}
+            {profile.hometown && (
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">고향:</span>
+                <span className="text-sm text-muted-foreground">{profile.hometown}</span>
+              </div>
+            )}
+            {profile.education && (
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">학교:</span>
+                <span className="text-sm text-muted-foreground">{profile.education}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Work Info */}
+      {(profile.workDescription || profile.techStack || profile.certifications || profile.languages) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>업무 정보</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.workDescription && (
+              <div>
+                <p className="text-sm font-medium flex items-center gap-2 mb-1">
+                  <Briefcase className="w-4 h-4 text-muted-foreground" />
+                  부서에서 하는 일
+                </p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap ml-6">{profile.workDescription}</p>
+              </div>
+            )}
+            {profile.techStack && (
+              <div>
+                <p className="text-sm font-medium flex items-center gap-2 mb-1">
+                  <Code className="w-4 h-4 text-muted-foreground" />
+                  기술 스택
+                </p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap ml-6">{profile.techStack}</p>
+              </div>
+            )}
+            {profile.certifications && (
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">자격증:</span>
+                <span className="text-sm text-muted-foreground">{profile.certifications}</span>
+              </div>
+            )}
+            {profile.languages && (
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">언어 능력:</span>
+                <span className="text-sm text-muted-foreground">{profile.languages}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Hobbies */}
       <Card>
         <CardHeader>
           <CardTitle>취미/관심사</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {profile.hobbies.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {profile.hobbies.map((hobby) => (
@@ -195,6 +297,21 @@ export default function UserProfilePage() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Lock className="w-4 h-4" />
               비공개 정보입니다
+            </div>
+          )}
+
+          {profile.interests && (
+            <div>
+              <p className="text-sm font-medium mb-1">관심 분야</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{profile.interests}</p>
+            </div>
+          )}
+
+          {profile.favoriteFood && (
+            <div className="flex items-center gap-2">
+              <Utensils className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">좋아하는 음식:</span>
+              <span className="text-sm text-muted-foreground">{profile.favoriteFood}</span>
             </div>
           )}
         </CardContent>
@@ -250,6 +367,21 @@ export default function UserProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Career Goals */}
+      {profile.careerGoals && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              커리어 목표
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{profile.careerGoals}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

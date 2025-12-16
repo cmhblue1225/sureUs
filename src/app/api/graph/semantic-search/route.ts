@@ -217,6 +217,19 @@ export async function POST(request: NextRequest) {
           collaborationStyle: profile.collaboration_style || undefined,
           strengths: profile.strengths || undefined,
           preferredPeopleType: profile.preferred_people_type || undefined,
+          // 새 필드
+          livingLocation: profile.living_location || undefined,
+          hometown: profile.hometown || undefined,
+          education: profile.education || undefined,
+          workDescription: profile.work_description || undefined,
+          techStack: profile.tech_stack || undefined,
+          favoriteFood: profile.favorite_food || undefined,
+          ageRange: profile.age_range || undefined,
+          interests: profile.interests || undefined,
+          careerGoals: profile.career_goals || undefined,
+          certifications: profile.certifications || undefined,
+          languages: profile.languages || undefined,
+          // 임베딩
           embedding: parseEmbedding(embedding?.combined_embedding),
         };
       }

@@ -82,11 +82,29 @@ export interface ProfileEmbeddings {
   sourceTextHash: string;
 }
 
-export async function generateProfileEmbeddings(profile: {
-  collaborationStyle?: string | null;
-  strengths?: string | null;
-  preferredPeopleType?: string | null;
-}): Promise<ProfileEmbeddings | null> {
+/**
+ * Fallback 컨텍스트: 텍스트 필드가 없을 때 임베딩 생성에 사용
+ */
+export interface ProfileFallbackContext {
+  department?: string | null;
+  jobRole?: string | null;
+  mbti?: string | null;
+  hobbies?: string[];
+}
+
+export async function generateProfileEmbeddings(
+  profile: {
+    collaborationStyle?: string | null;
+    strengths?: string | null;
+    preferredPeopleType?: string | null;
+    // 새 필드
+    workDescription?: string | null;
+    techStack?: string | null;
+    interests?: string | null;
+    careerGoals?: string | null;
+  },
+  fallbackContext?: ProfileFallbackContext
+): Promise<ProfileEmbeddings | null> {
   const texts: string[] = [];
   const textMap: { field: string; text: string }[] = [];
 
@@ -105,7 +123,52 @@ export async function generateProfileEmbeddings(profile: {
     textMap.push({ field: "preferredPeopleType", text: profile.preferredPeopleType });
   }
 
-  // If no text fields, return null
+  // 새 필드 추가 - 임베딩 생성에 포함
+  if (profile.workDescription) {
+    texts.push(profile.workDescription);
+    textMap.push({ field: "workDescription", text: profile.workDescription });
+  }
+
+  if (profile.techStack) {
+    texts.push(profile.techStack);
+    textMap.push({ field: "techStack", text: profile.techStack });
+  }
+
+  if (profile.interests) {
+    texts.push(profile.interests);
+    textMap.push({ field: "interests", text: profile.interests });
+  }
+
+  if (profile.careerGoals) {
+    texts.push(profile.careerGoals);
+    textMap.push({ field: "careerGoals", text: profile.careerGoals });
+  }
+
+  // Fallback: 텍스트 필드가 없으면 기본 정보로 임베딩 생성
+  if (texts.length === 0 && fallbackContext) {
+    const fallbackParts: string[] = [];
+
+    if (fallbackContext.department) {
+      fallbackParts.push(`부서: ${fallbackContext.department}`);
+    }
+    if (fallbackContext.jobRole) {
+      fallbackParts.push(`직군: ${fallbackContext.jobRole}`);
+    }
+    if (fallbackContext.mbti) {
+      fallbackParts.push(`MBTI: ${fallbackContext.mbti}`);
+    }
+    if (fallbackContext.hobbies && fallbackContext.hobbies.length > 0) {
+      fallbackParts.push(`취미: ${fallbackContext.hobbies.join(", ")}`);
+    }
+
+    if (fallbackParts.length > 0) {
+      const fallbackText = fallbackParts.join(" | ");
+      texts.push(fallbackText);
+      textMap.push({ field: "fallback", text: fallbackText });
+    }
+  }
+
+  // If still no text fields, return null
   if (texts.length === 0) {
     return null;
   }

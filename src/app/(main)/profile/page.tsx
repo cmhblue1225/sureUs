@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Edit, User, MapPin, Briefcase, Building, Globe, Users, Lock } from "lucide-react";
+import { Edit, User, MapPin, Briefcase, Building, Globe, Users, Lock, Home, GraduationCap, Code, Target, Utensils, Calendar, MessageSquare } from "lucide-react";
 import type { Database, VisibilityLevel } from "@/types/database";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
@@ -130,6 +130,124 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Personal Info */}
+      {(profile.age_range || profile.living_location || profile.hometown || profile.education) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>개인 정보</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.age_range && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">연령대</p>
+                    <p className="text-sm text-muted-foreground">{profile.age_range}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.age_range || "public"} />
+              </div>
+            )}
+            {profile.living_location && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <Home className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">사는 곳</p>
+                    <p className="text-sm text-muted-foreground">{profile.living_location}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.living_location || "public"} />
+              </div>
+            )}
+            {profile.hometown && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">고향</p>
+                    <p className="text-sm text-muted-foreground">{profile.hometown}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.hometown || "public"} />
+              </div>
+            )}
+            {profile.education && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">학교</p>
+                    <p className="text-sm text-muted-foreground">{profile.education}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.education || "public"} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Work Info */}
+      {(profile.work_description || profile.tech_stack || profile.certifications || profile.languages) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>업무 정보</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.work_description && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-muted-foreground" />
+                    부서에서 하는 일
+                  </p>
+                  <VisibilityBadge level={visibility.work_description || "public"} />
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap ml-6">{profile.work_description}</p>
+              </div>
+            )}
+            {profile.tech_stack && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Code className="w-4 h-4 text-muted-foreground" />
+                    기술 스택
+                  </p>
+                  <VisibilityBadge level={visibility.tech_stack || "public"} />
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap ml-6">{profile.tech_stack}</p>
+              </div>
+            )}
+            {profile.certifications && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">자격증</p>
+                    <p className="text-sm text-muted-foreground">{profile.certifications}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.certifications || "public"} />
+              </div>
+            )}
+            {profile.languages && (
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">언어 능력</p>
+                    <p className="text-sm text-muted-foreground">{profile.languages}</p>
+                  </div>
+                </div>
+                <VisibilityBadge level={visibility.languages || "public"} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Hobbies */}
       <Card>
         <CardHeader>
@@ -138,7 +256,7 @@ export default async function ProfilePage() {
             <VisibilityBadge level={visibility.hobbies || "public"} />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {hobbies.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {hobbies.map((hobby) => (
@@ -149,6 +267,29 @@ export default async function ProfilePage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">아직 관심사가 없습니다</p>
+          )}
+
+          {profile.interests && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium">관심 분야</p>
+                <VisibilityBadge level={visibility.interests || "public"} />
+              </div>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{profile.interests}</p>
+            </div>
+          )}
+
+          {profile.favorite_food && (
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <Utensils className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">좋아하는 음식</p>
+                  <p className="text-sm text-muted-foreground">{profile.favorite_food}</p>
+                </div>
+              </div>
+              <VisibilityBadge level={visibility.favorite_food || "public"} />
+            </div>
           )}
         </CardContent>
       </Card>
@@ -194,6 +335,24 @@ export default async function ProfilePage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{profile.preferred_people_type}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Career Goals */}
+      {profile.career_goals && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                커리어 목표
+              </CardTitle>
+              <VisibilityBadge level={visibility.career_goals || "public"} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{profile.career_goals}</p>
           </CardContent>
         </Card>
       )}

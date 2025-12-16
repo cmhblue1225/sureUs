@@ -18,6 +18,19 @@ export interface SemanticSearchCandidate {
   collaborationStyle?: string;
   strengths?: string;
   preferredPeopleType?: string;
+  // 새 필드
+  livingLocation?: string;
+  hometown?: string;
+  education?: string;
+  workDescription?: string;
+  techStack?: string;
+  favoriteFood?: string;
+  ageRange?: string;
+  interests?: string;
+  careerGoals?: string;
+  certifications?: string;
+  languages?: string;
+  // 임베딩
   embedding?: number[];
 }
 
@@ -298,13 +311,24 @@ function calculateTextMatchScore(
     return 0;
   }
 
-  // 검색 대상 텍스트 결합
+  // 검색 대상 텍스트 결합 (새 필드 포함)
   const searchableText = [
     candidate.collaborationStyle || "",
     candidate.strengths || "",
     candidate.preferredPeopleType || "",
     candidate.department,
     candidate.jobRole,
+    // 새 필드 추가
+    candidate.livingLocation || "",
+    candidate.hometown || "",
+    candidate.education || "",
+    candidate.workDescription || "",
+    candidate.techStack || "",
+    candidate.favoriteFood || "",
+    candidate.interests || "",
+    candidate.careerGoals || "",
+    candidate.certifications || "",
+    candidate.languages || "",
   ]
     .join(" ")
     .toLowerCase();
