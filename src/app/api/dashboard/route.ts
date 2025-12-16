@@ -25,6 +25,9 @@ export async function GET() {
       .single() as any);
 
     const userName = profile?.users?.name || "사용자";
+    const userAvatar = profile?.users?.avatar_url || null;
+    const department = profile?.department || "";
+    const jobRole = profile?.job_role || "";
     const hasProfile = profile?.is_profile_complete ?? false;
 
     // 병렬로 통계 데이터 조회
@@ -144,6 +147,9 @@ export async function GET() {
       success: true,
       data: {
         userName,
+        userAvatar,
+        department,
+        jobRole,
         hasProfile,
         stats,
         myClubs,
