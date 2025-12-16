@@ -5,12 +5,13 @@
  * 자연어 쿼리로 동료를 검색
  */
 
-import { useState, useCallback } from "react";
-import { Search, Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Search, Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import type { ExpandedQuery } from "@/lib/anthropic/queryExpansion";
 
 interface SemanticSearchNode {
@@ -78,6 +79,43 @@ export function SemanticSearch({
   const [searchMeta, setSearchMeta] = useState<SemanticSearchResult["searchMeta"] | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
+  // 유사도 필터링 상태
+  const [minMatchScore, setMinMatchScore] = useState(0.2);
+  const [rawResults, setRawResults] = useState<SemanticSearchResult | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // 유사도 필터링 적용
+  useEffect(() => {
+    if (!rawResults) {
+      onSearchResults(null);
+      return;
+    }
+
+    // matchScore 기준으로 노드 필터링
+    const filteredNodes = rawResults.nodes.filter(
+      (node) => (node.matchScore ?? 0) >= minMatchScore
+    );
+
+    // 필터링된 노드 ID 집합
+    const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
+
+    // 해당 노드들 사이의 엣지만 유지
+    const filteredEdges = rawResults.edges.filter(
+      (edge) => filteredNodeIds.has(edge.source) && filteredNodeIds.has(edge.target)
+    );
+
+    // 필터링된 결과 전달
+    onSearchResults({
+      ...rawResults,
+      nodes: filteredNodes,
+      edges: filteredEdges,
+      searchMeta: {
+        ...rawResults.searchMeta,
+        totalResults: filteredNodes.length,
+      },
+    });
+  }, [rawResults, minMatchScore, onSearchResults]);
+
   const handleSearch = useCallback(async () => {
     if (!query.trim() || isLoading) return;
 
@@ -100,7 +138,8 @@ export function SemanticSearch({
       }
 
       setSearchMeta(result.data.searchMeta);
-      onSearchResults(result.data);
+      setRawResults(result.data);
+      // 필터링은 useEffect에서 처리
     } catch (err) {
       console.error("Semantic search error:", err);
       setError("검색 중 오류가 발생했습니다.");
@@ -124,6 +163,8 @@ export function SemanticSearch({
     setQuery("");
     setError(null);
     setSearchMeta(null);
+    setRawResults(null);
+    setMinMatchScore(0.2);
     onSearchResults(null);
   };
 
@@ -267,6 +308,58 @@ export function SemanticSearch({
               )}
             </div>
           )}
+
+          {/* 유사도 필터 */}
+          <div className="space-y-2 pt-2 border-t">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground"
+            >
+              <span className="flex items-center gap-1">
+                <SlidersHorizontal className="h-3 w-3" />
+                유사도 필터
+              </span>
+              {showFilters ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </button>
+
+            {showFilters && (
+              <div className="space-y-3 bg-muted/50 rounded-md p-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">최소 유사도</span>
+                    <span className="font-mono font-medium">
+                      {Math.round(minMatchScore * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[minMatchScore]}
+                    onValueChange={(value) => setMinMatchScore(value[0])}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+                {rawResults && (
+                  <p className="text-xs text-muted-foreground">
+                    전체 {rawResults.nodes.length}명 중{" "}
+                    <span className="text-foreground font-medium">
+                      {rawResults.nodes.filter((n) => (n.matchScore ?? 0) >= minMatchScore).length}명
+                    </span>{" "}
+                    표시
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* 검색 결과 요약 */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">

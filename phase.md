@@ -161,6 +161,7 @@
 | 2025-12-16 | 7 | 투표 기능, 갤러리 기능, 추천 알고리즘, LLM 통합 완료 |
 | 2025-12-16 | 7 | member_count 버그 수정, 탭 네비게이션 성능 최적화 (ClubContext) |
 | 2025-12-16 | 8 | 네트워크 의미 검색 기능 구현 (Claude 쿼리 확장 + 벡터 검색) |
+| 2025-12-16 | 8 | 의미 검색 유사도 필터 슬라이더 추가 |
 
 ---
 
@@ -285,6 +286,7 @@
 | SemanticSearch 컴포넌트 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
 | 예시 쿼리 표시 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
 | AI 분석 결과 표시 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
+| 유사도 필터 슬라이더 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
 
 ### 8-5. 네트워크 페이지 통합
 | 작업 | 상태 | 파일 |
