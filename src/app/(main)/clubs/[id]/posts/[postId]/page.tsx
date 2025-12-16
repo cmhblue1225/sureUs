@@ -142,7 +142,7 @@ export default function PostDetailPage({
       const result = await response.json();
 
       if (result.success) {
-        setComments(result.data);
+        setComments(result.data.comments);
       }
     } catch (error) {
       console.error("Comments fetch error:", error);
