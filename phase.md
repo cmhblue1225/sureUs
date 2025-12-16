@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2025-12-16
 
-## 현재 Phase: 9 완료 (대시보드 개선)
+## 현재 Phase: 10 완료 (대시보드 기능 확장 + 네트워크 개선)
 
 ---
 
@@ -163,6 +163,65 @@
 | 2025-12-16 | 8 | 네트워크 의미 검색 기능 구현 (Claude 쿼리 확장 + 벡터 검색) |
 | 2025-12-16 | 8 | 의미 검색 유사도 필터 슬라이더 추가 |
 | 2025-12-16 | 9 | 대시보드 UI 전면 개편 (그라데이션 히어로, 통계, 활동 피드) |
+| 2025-12-16 | 10 | 대시보드 기능 확장 (프로필 완성도, 추천 동료, 동호회 추천, 진행 중 투표) |
+| 2025-12-16 | 10 | 네트워크 페이지 레이아웃 개선 (통계/범례 하단 이동, 필터/검색 우측 상단 배치) |
+| 2025-12-16 | 10 | 의미 검색 정확도 개선 (프로필 필드 중심 매칭, 확장 최소화) |
+| 2025-12-16 | 10 | 의미 검색 모드 옵션 추가 (정확하게 찾기 / 넓게 찾기) |
+| 2025-12-16 | 10 | 대시보드 추천 동료 Enhanced Algorithm 적용 (7요소 점수 알고리즘) |
+
+---
+
+## Phase 10: 대시보드 기능 확장 + 네트워크 개선
+**상태: 완료**
+
+### 10-1. 대시보드 API 확장
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 프로필 완성도 계산 로직 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 진행 중인 투표 조회 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 추천 동료 미리보기 데이터 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 추천 동호회 데이터 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| Enhanced Algorithm 적용 (추천 동료) | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+
+### 10-2. 대시보드 UI 확장
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 프로필 완성도 진행률 배너 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 추천 동료 카드 섹션 (3명) | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 추천 동호회 섹션 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 진행 중인 투표 섹션 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+
+### 10-3. 네트워크 페이지 레이아웃 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 통계/범례 섹션 하단 이동 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 필터/검색 섹션 우측 상단 배치 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 레이아웃 그리드 재구성 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+
+### 10-4. 의미 검색 정확도 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 쿼리 확장 최소화 프롬프트 수정 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| profileFieldHints 추가 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| 가중치 재조정 (프로필 필드 40%) | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 프로필 필드 직접 매칭 로직 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+
+### 10-5. 의미 검색 모드 옵션
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| createExactSearchQuery() 함수 추가 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| API searchMode 파라미터 처리 | ✅ 완료 | `src/app/api/graph/semantic-search/route.ts` |
+| 검색 모드 토글 UI | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
+
+### 기능 요약
+- **프로필 완성도**: 8개 필드 기준 0-100% 진행률 표시, 미완성 필드 안내
+- **추천 동료**: Enhanced Algorithm 7요소 점수 기반 상위 3명 카드 형태로 표시
+  - 임베딩 유사도 30%, 태그 중첩 25%, MBTI 궁합 12%, 직군 10%, 부서 8%, 위치 5%, 선호도 10%
+- **추천 동호회**: 미가입 동호회 중 인기 동호회 3개 표시
+- **진행 중인 투표**: 내 동호회의 미참여 투표, 마감시간 표시
+- **네트워크 레이아웃**: 그래프 좌측, 필터/검색 우측, 통계/범례 하단 배치
+- **의미 검색 정확도 개선**: 협업 스타일/강점/선호 동료 필드 중심 매칭, MBTI/태그 확장 최소화
+- **의미 검색 모드 옵션**: 정확하게 찾기(LLM 확장 없음) / 넓게 찾기(AI 확장) 선택 가능
 
 ---
 
@@ -179,17 +238,11 @@
 ### 9-2. 대시보드 UI
 | 작업 | 상태 | 파일 |
 |------|------|------|
-| 그라데이션 히어로 섹션 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
-| 통계 카드 (추천, 메시지, 동호회, 알림) | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
-| 빠른 탐색 메뉴 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
-| 최근 동호회 활동 피드 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 프로필 카드 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 통계 링크 (메시지, 추천, 동호회, 알림) | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| 동호회 최근글 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
 | 내 동호회 목록 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
-
-### 디자인 특징
-- **히어로 섹션**: 코랄-틸 그라데이션 배경, 개인화된 환영 메시지
-- **통계 카드**: 컬러 코딩된 왼쪽 테두리, 클릭 가능한 링크
-- **활동 피드**: 타임라인 형태, 상대 시간 표시
-- **테마 일관성**: sureUs 코랄/틸 색상 적용
+| 최근 알림 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
 
 ---
 

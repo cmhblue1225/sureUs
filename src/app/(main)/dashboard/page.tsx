@@ -4,18 +4,21 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
   User,
-  Search,
   Sparkles,
-  Network,
   Users,
   Bell,
   FileText,
   Loader2,
   Mail,
   ChevronRight,
+  Vote,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
 
 interface DashboardData {
@@ -46,6 +49,37 @@ interface DashboardData {
     created_at: string;
     club: { id: string; name: string };
     author: { name: string; avatar_url: string | null };
+  }>;
+  // 새로 추가된 필드
+  profileCompletion: {
+    percentage: number;
+    completedFields: string[];
+    missingFields: string[];
+  };
+  activePolls: Array<{
+    postId: string;
+    clubId: string;
+    clubName: string;
+    question: string;
+    optionCount: number;
+    endDate: string | null;
+    totalVotes: number;
+  }>;
+  recommendedColleagues: Array<{
+    id: string;
+    name: string;
+    department: string;
+    jobRole: string;
+    avatarUrl: string | null;
+    matchScore: number;
+  }>;
+  recommendedClubs: Array<{
+    id: string;
+    name: string;
+    category: string;
+    memberCount: number;
+    imageUrl: string | null;
+    score: number;
   }>;
 }
 
@@ -104,32 +138,55 @@ export default function DashboardPage() {
     );
   }
 
+  // 마감시간 포맷
+  const formatEndDate = (dateString: string | null) => {
+    if (!dateString) return "마감 없음";
+    const endDate = new Date(dateString);
+    const now = new Date();
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    if (diffDays > 0) return `${diffDays}일 남음`;
+    if (diffHours > 0) return `${diffHours}시간 남음`;
+    return "곧 마감";
+  };
+
   return (
     <div className="space-y-6">
-      {/* Profile Completion Alert */}
-      {!data.hasProfile && (
+      {/* Profile Completion Banner */}
+      {data.profileCompletion && data.profileCompletion.percentage < 100 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">프로필을 완성해주세요</p>
-                <p className="text-xs text-muted-foreground">프로필을 완성하면 나와 비슷한 동료를 찾을 수 있어요</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-sm">프로필 완성도</p>
+                  <span className="text-sm font-bold text-primary">{data.profileCompletion.percentage}%</span>
+                </div>
+                <Progress value={data.profileCompletion.percentage} className="h-2" />
+                {data.profileCompletion.missingFields.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    미완성: {data.profileCompletion.missingFields.slice(0, 3).join(", ")}
+                    {data.profileCompletion.missingFields.length > 3 && ` 외 ${data.profileCompletion.missingFields.length - 3}개`}
+                  </p>
+                )}
               </div>
               <Link href="/profile/edit">
-                <Button size="sm" className="bg-primary hover:bg-primary/90">작성하기</Button>
+                <Button size="sm" className="bg-primary hover:bg-primary/90 shrink-0">완성하기</Button>
               </Link>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Top Section: Profile + Stats */}
+      {/* Main Content */}
       <div className="grid grid-cols-12 gap-4">
         {/* Profile Card */}
-        <Card className="col-span-12 md:col-span-4 lg:col-span-3">
+        <Card className="col-span-12 md:col-span-6 lg:col-span-3">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
               <Avatar className="w-20 h-20 mb-3 ring-4 ring-primary/10">
@@ -179,61 +236,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="col-span-12 md:col-span-8 lg:col-span-9">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <Network className="w-5 h-5 text-primary" />
-              <CardTitle className="text-base">빠른 메뉴</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Link href="/search">
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Search className="w-6 h-6 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium">동료 검색</span>
-                  <span className="text-xs text-muted-foreground">이름, 부서로 검색</span>
-                </div>
-              </Link>
-              <Link href="/recommendations">
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium">추천 동료</span>
-                  <span className="text-xs text-muted-foreground">나와 비슷한 동료</span>
-                </div>
-              </Link>
-              <Link href="/network">
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Network className="w-6 h-6 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium">네트워크</span>
-                  <span className="text-xs text-muted-foreground">관계망 시각화</span>
-                </div>
-              </Link>
-              <Link href="/clubs">
-                <div className="flex flex-col items-center gap-2 p-4 rounded-xl border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium">동호회</span>
-                  <span className="text-xs text-muted-foreground">관심사 기반 모임</span>
-                </div>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Bottom Section: Posts + Clubs/Notifications */}
-      <div className="grid grid-cols-12 gap-4">
         {/* Recent Posts */}
-        <Card className="col-span-12 lg:col-span-8">
+        <Card className="col-span-12 md:col-span-6 lg:col-span-5">
           <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">동호회 최근글</CardTitle>
@@ -365,6 +369,145 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      {/* Bottom Row: Recommendations */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Recommended Colleagues */}
+        <Card className="col-span-12 lg:col-span-6">
+          <CardHeader className="pb-3 border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                추천 동료
+              </CardTitle>
+              <Link href="/recommendations" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                더보기 <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            {data.recommendedColleagues && data.recommendedColleagues.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {data.recommendedColleagues.map((colleague) => (
+                  <Link key={colleague.id} href={`/profile/${colleague.id}`}>
+                    <div className="flex flex-col items-center p-3 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors text-center">
+                      <Avatar className="w-12 h-12 mb-2 ring-2 ring-primary/10">
+                        <AvatarImage src={colleague.avatarUrl || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {colleague.name?.charAt(0) || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-sm font-medium truncate w-full">{colleague.name}</p>
+                      <p className="text-xs text-muted-foreground truncate w-full">
+                        {colleague.department || colleague.jobRole || "-"}
+                      </p>
+                      <Badge variant="secondary" className="mt-2 text-xs">
+                        {colleague.matchScore}% 매칭
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center">
+                <Sparkles className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">프로필을 완성하면 추천 동료를 볼 수 있어요</p>
+                <Link href="/profile/edit">
+                  <Button variant="outline" size="sm" className="mt-3">
+                    프로필 작성하기
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Club Recommendations + Active Polls */}
+        <div className="col-span-12 lg:col-span-6 space-y-4">
+          {/* Recommended Clubs */}
+          <Card>
+            <CardHeader className="pb-3 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  추천 동호회
+                </CardTitle>
+                <Link href="/clubs" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  더보기 <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {data.recommendedClubs && data.recommendedClubs.length > 0 ? (
+                <div className="divide-y">
+                  {data.recommendedClubs.map((club) => (
+                    <Link key={club.id} href={`/clubs/${club.id}`}>
+                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          {club.imageUrl ? (
+                            <img src={club.imageUrl} alt={club.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Users className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{club.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Badge variant="outline" className="text-xs py-0">{club.category}</Badge>
+                            <span>멤버 {club.memberCount}명</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6 text-center">
+                  <Users className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">추천할 동호회가 없습니다</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Active Polls */}
+          {data.activePolls && data.activePolls.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Vote className="w-4 h-4 text-purple-500" />
+                  진행 중인 투표
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {data.activePolls.map((poll) => (
+                    <Link key={poll.postId} href={`/clubs/${poll.clubId}/posts/${poll.postId}`}>
+                      <div className="px-4 py-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium line-clamp-1">{poll.question}</p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span className="text-primary">{poll.clubName}</span>
+                              <span>·</span>
+                              <span>{poll.optionCount}개 선택지</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-orange-500 shrink-0">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatEndDate(poll.endDate)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

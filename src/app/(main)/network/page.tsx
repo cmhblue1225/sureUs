@@ -338,6 +338,7 @@ export default function NetworkPage() {
         </Button>
       </div>
 
+      {/* Main Area: Graph + Right Sidebar */}
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Graph */}
         <div className="lg:col-span-3">
@@ -377,18 +378,49 @@ export default function NetworkPage() {
           </Card>
         </div>
 
-        {/* Info Panel */}
+        {/* Right Sidebar: Filter + Search */}
         <div className="space-y-4">
-          {/* Controls */}
+          {/* Filter Controls */}
           {clusteringResult && (
-            <GraphControls
-              stats={clusteringResult.stats}
-              minSimilarity={minSimilarity}
-              onMinSimilarityChange={setMinSimilarity}
-              onExpandAll={interaction.expandAllClusters}
-              onCollapseAll={interaction.collapseAllClusters}
-              clusterColors={clusterColors}
-            />
+            <Card>
+              <CardContent className="pt-4 space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-3">유사도 필터</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">최소 유사도</span>
+                      <span className="font-mono font-medium">{Math.round(minSimilarity * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={minSimilarity * 100}
+                      onChange={(e) => setMinSimilarity(Number(e.target.value) / 100)}
+                      className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={interaction.expandAllClusters}
+                  >
+                    모두 펼치기
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={interaction.collapseAllClusters}
+                  >
+                    모두 접기
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Search Tabs */}
@@ -483,6 +515,89 @@ export default function NetworkPage() {
           )}
         </div>
       </div>
+
+      {/* Bottom Row: Stats + Legend */}
+      {clusteringResult && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Network Stats */}
+          <Card>
+            <CardContent className="pt-4">
+              <h3 className="text-sm font-medium mb-3">네트워크 통계</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">총 노드</span>
+                  <span className="font-medium">{clusteringResult.stats.totalNodes}명</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">총 연결</span>
+                  <span className="font-medium">{clusteringResult.stats.totalEdges}개</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">클러스터</span>
+                  <span className="font-medium">{clusteringResult.stats.clusterCount}개</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">평균 유사도</span>
+                  <span className="font-medium font-mono">
+                    {Math.round(clusteringResult.stats.averageSimilarity * 100)}%
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Legend - Node Types */}
+          <Card>
+            <CardContent className="pt-4">
+              <h3 className="text-sm font-medium mb-3">범례</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">노드 유형</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-primary/20 border-2 border-primary" />
+                    <span>나</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-card border-2 border-border" />
+                    <span>동료</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">연결 유형</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-0.5 bg-muted-foreground/50" />
+                    <span>같은 부서</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-0.5 bg-primary/70" style={{ background: "repeating-linear-gradient(90deg, hsl(var(--primary)) 0, hsl(var(--primary)) 3px, transparent 3px, transparent 6px)" }} />
+                    <span>타 부서</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cluster Colors */}
+          {clusterColors.length > 0 && (
+            <Card>
+              <CardContent className="pt-4">
+                <h3 className="text-sm font-medium mb-3">부서 색상</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {clusterColors.slice(0, 9).map(({ label, color }) => (
+                    <div key={label} className="flex items-center gap-1.5 text-xs">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="truncate">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Profile Modal */}
       <ProfileModal

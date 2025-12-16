@@ -33,6 +33,7 @@ export interface SemanticSearchResult {
 
   // 점수
   semanticScore: number;
+  profileFieldScore: number;
   mbtiMatchScore: number;
   tagMatchScore: number;
   textMatchScore: number;
@@ -49,12 +50,13 @@ export interface SemanticSearchOptions {
   minScore?: number;
 }
 
-// 점수 가중치
+// 점수 가중치 - 프로필 필드(텍스트) 매칭 중심으로 조정
 const SEMANTIC_WEIGHTS = {
-  vectorSimilarity: 0.50,
-  mbtiMatch: 0.25,
-  tagMatch: 0.15,
-  textMatch: 0.10,
+  vectorSimilarity: 0.35,  // 벡터 유사도 (감소)
+  profileFieldMatch: 0.40, // 프로필 필드 직접 매칭 (신규, 가장 높음)
+  mbtiMatch: 0.10,         // MBTI (감소 - 직접 언급된 경우만)
+  tagMatch: 0.10,          // 태그 (감소 - 직접 언급된 경우만)
+  textMatch: 0.05,         // 키워드 (감소)
 };
 
 /**
@@ -85,6 +87,7 @@ export function performSemanticSearch(
         avatarUrl: candidate.avatarUrl,
         hobbies: candidate.hobbies,
         semanticScore: scores.semanticScore,
+        profileFieldScore: scores.profileFieldScore,
         mbtiMatchScore: scores.mbtiMatchScore,
         tagMatchScore: scores.tagMatchScore,
         textMatchScore: scores.textMatchScore,
@@ -102,6 +105,7 @@ export function performSemanticSearch(
 
 interface SemanticScores {
   semanticScore: number;
+  profileFieldScore: number;
   mbtiMatchScore: number;
   tagMatchScore: number;
   textMatchScore: number;
@@ -123,19 +127,25 @@ function calculateSemanticScores(
     semanticScore = (rawSimilarity + 1) / 2;
   }
 
-  // 2. MBTI 매칭
+  // 2. 프로필 필드 직접 매칭 (가장 중요!)
+  const profileFieldScore = calculateProfileFieldScore(
+    candidate,
+    expandedQuery.profileFieldHints
+  );
+
+  // 3. MBTI 매칭 (직접 언급된 경우에만 의미 있음)
   const mbtiMatchScore = calculateMbtiMatchScore(
     candidate.mbti,
     expandedQuery.suggestedMbtiTypes
   );
 
-  // 3. 태그 매칭 (취미 태그)
+  // 4. 태그 매칭 (취미 태그 - 직접 언급된 경우에만)
   const tagMatchScore = calculateTagMatchScore(
     candidate.hobbies,
     expandedQuery.suggestedHobbyTags
   );
 
-  // 4. 텍스트 매칭 (키워드 기반)
+  // 5. 텍스트 매칭 (키워드 기반)
   const textMatchScore = calculateTextMatchScore(
     candidate,
     expandedQuery.searchKeywords
@@ -143,10 +153,66 @@ function calculateSemanticScores(
 
   return {
     semanticScore,
+    profileFieldScore,
     mbtiMatchScore,
     tagMatchScore,
     textMatchScore,
   };
+}
+
+/**
+ * 프로필 필드 직접 매칭 점수
+ * 협업 스타일, 강점, 선호하는 동료 유형 필드와 직접 비교
+ */
+function calculateProfileFieldScore(
+  candidate: SemanticSearchCandidate,
+  hints: ExpandedQuery["profileFieldHints"]
+): number {
+  let totalScore = 0;
+  let fieldCount = 0;
+
+  // 협업 스타일 매칭
+  if (candidate.collaborationStyle && hints.collaborationStyle.length > 0) {
+    const styleText = candidate.collaborationStyle.toLowerCase();
+    const matchCount = hints.collaborationStyle.filter((h) =>
+      styleText.includes(h.toLowerCase())
+    ).length;
+    if (matchCount > 0) {
+      totalScore += matchCount / hints.collaborationStyle.length;
+      fieldCount++;
+    }
+  }
+
+  // 강점 매칭
+  if (candidate.strengths && hints.strengths.length > 0) {
+    const strengthsText = candidate.strengths.toLowerCase();
+    const matchCount = hints.strengths.filter((h) =>
+      strengthsText.includes(h.toLowerCase())
+    ).length;
+    if (matchCount > 0) {
+      totalScore += matchCount / hints.strengths.length;
+      fieldCount++;
+    }
+  }
+
+  // 선호하는 동료 유형 매칭
+  if (candidate.preferredPeopleType && hints.preferredPeopleType.length > 0) {
+    const preferredText = candidate.preferredPeopleType.toLowerCase();
+    const matchCount = hints.preferredPeopleType.filter((h) =>
+      preferredText.includes(h.toLowerCase())
+    ).length;
+    if (matchCount > 0) {
+      totalScore += matchCount / hints.preferredPeopleType.length;
+      fieldCount++;
+    }
+  }
+
+  // 필드가 매칭된 경우에만 점수 계산
+  if (fieldCount === 0) {
+    return 0;
+  }
+
+  return totalScore / fieldCount;
 }
 
 /**
@@ -259,6 +325,7 @@ function calculateTextMatchScore(
 function calculateTotalScore(scores: SemanticScores): number {
   return (
     scores.semanticScore * SEMANTIC_WEIGHTS.vectorSimilarity +
+    scores.profileFieldScore * SEMANTIC_WEIGHTS.profileFieldMatch +
     scores.mbtiMatchScore * SEMANTIC_WEIGHTS.mbtiMatch +
     scores.tagMatchScore * SEMANTIC_WEIGHTS.tagMatch +
     scores.textMatchScore * SEMANTIC_WEIGHTS.textMatch
@@ -275,41 +342,59 @@ function generateMatchReasons(
 ): string[] {
   const reasons: string[] = [];
 
-  // 벡터 유사도 기반
-  if (scores.semanticScore >= 0.6) {
-    reasons.push("프로필 내용이 검색 조건과 높은 유사도를 보입니다");
-  } else if (scores.semanticScore >= 0.4) {
-    reasons.push("프로필 내용이 검색 조건과 유사합니다");
+  // 프로필 필드 직접 매칭 (가장 신뢰도 높음)
+  if (scores.profileFieldScore >= 0.5) {
+    const matchedFields: string[] = [];
+    if (candidate.collaborationStyle) {
+      const hints = expandedQuery.profileFieldHints.collaborationStyle;
+      if (hints.some((h) => candidate.collaborationStyle!.toLowerCase().includes(h.toLowerCase()))) {
+        matchedFields.push("협업 스타일");
+      }
+    }
+    if (candidate.strengths) {
+      const hints = expandedQuery.profileFieldHints.strengths;
+      if (hints.some((h) => candidate.strengths!.toLowerCase().includes(h.toLowerCase()))) {
+        matchedFields.push("강점");
+      }
+    }
+    if (candidate.preferredPeopleType) {
+      const hints = expandedQuery.profileFieldHints.preferredPeopleType;
+      if (hints.some((h) => candidate.preferredPeopleType!.toLowerCase().includes(h.toLowerCase()))) {
+        matchedFields.push("선호하는 동료 유형");
+      }
+    }
+    if (matchedFields.length > 0) {
+      reasons.push(`${matchedFields.join(", ")} 필드에서 일치`);
+    }
+  } else if (scores.profileFieldScore > 0) {
+    reasons.push("프로필 자기소개와 부분 일치");
   }
 
-  // MBTI 매칭
-  if (scores.mbtiMatchScore >= 0.7 && candidate.mbti) {
-    const suggestedStr = expandedQuery.suggestedMbtiTypes.join(", ");
-    reasons.push(`MBTI ${candidate.mbti}가 추천 유형(${suggestedStr})과 일치합니다`);
-  } else if (scores.mbtiMatchScore >= 0.3 && candidate.mbti) {
-    reasons.push(`MBTI ${candidate.mbti}가 검색 조건과 유사한 성향입니다`);
+  // 벡터 유사도 기반 (보조 지표)
+  if (scores.semanticScore >= 0.65) {
+    reasons.push("전체 프로필 내용 유사도 높음");
   }
 
-  // 태그 매칭
-  if (scores.tagMatchScore > 0) {
+  // MBTI 매칭 (직접 언급된 경우에만)
+  if (scores.mbtiMatchScore >= 0.7 && candidate.mbti && expandedQuery.suggestedMbtiTypes.length > 0) {
+    reasons.push(`MBTI ${candidate.mbti} 일치`);
+  }
+
+  // 태그 매칭 (직접 언급된 경우에만)
+  if (scores.tagMatchScore > 0 && expandedQuery.suggestedHobbyTags.length > 0) {
     const matchedTags = candidate.hobbies.filter((h) =>
       expandedQuery.suggestedHobbyTags
         .map((t) => t.toLowerCase())
         .includes(h.toLowerCase())
     );
     if (matchedTags.length > 0) {
-      reasons.push(`공통 관심사: ${matchedTags.join(", ")}`);
+      reasons.push(`취미 태그: ${matchedTags.join(", ")}`);
     }
-  }
-
-  // 텍스트 매칭
-  if (scores.textMatchScore >= 0.5) {
-    reasons.push("프로필 텍스트에 관련 키워드가 포함되어 있습니다");
   }
 
   // 기본 이유
   if (reasons.length === 0) {
-    reasons.push("검색 조건과 부분적으로 일치합니다");
+    reasons.push("검색어와 관련된 프로필");
   }
 
   return reasons;

@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { Search, Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Search, Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal, Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,8 @@ interface SemanticSearchEdge {
   mbtiCompatible: boolean;
 }
 
+type SearchMode = "exact" | "broad";
+
 interface SemanticSearchResult {
   nodes: SemanticSearchNode[];
   edges: SemanticSearchEdge[];
@@ -51,6 +53,7 @@ interface SemanticSearchResult {
     totalResults: number;
     searchTime: number;
     usedFallback: boolean;
+    searchMode: SearchMode;
   };
 }
 
@@ -78,6 +81,9 @@ export function SemanticSearch({
   const [error, setError] = useState<string | null>(null);
   const [searchMeta, setSearchMeta] = useState<SemanticSearchResult["searchMeta"] | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // 검색 모드 상태
+  const [searchMode, setSearchMode] = useState<SearchMode>("exact");
 
   // 유사도 필터링 상태
   const [minMatchScore, setMinMatchScore] = useState(0.2);
@@ -126,7 +132,7 @@ export function SemanticSearch({
       const response = await fetch("/api/graph/semantic-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
+        body: JSON.stringify({ query: query.trim(), searchMode }),
       });
 
       const result = await response.json();
@@ -147,7 +153,7 @@ export function SemanticSearch({
     } finally {
       setIsLoading(false);
     }
-  }, [query, isLoading, setIsLoading, onSearchResults]);
+  }, [query, isLoading, setIsLoading, onSearchResults, searchMode]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.nativeEvent.isComposing) {
@@ -187,6 +193,39 @@ export function SemanticSearch({
           </Button>
         )}
       </div>
+
+      {/* 검색 모드 토글 */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg">
+        <Button
+          variant={searchMode === "exact" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setSearchMode("exact")}
+          className="flex-1 h-8 text-xs gap-1.5"
+        >
+          <Target className="h-3.5 w-3.5" />
+          정확하게 찾기
+        </Button>
+        <Button
+          variant={searchMode === "broad" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setSearchMode("broad")}
+          className={`flex-1 h-8 text-xs gap-1.5 ${
+            searchMode === "broad" ? "bg-purple-600 hover:bg-purple-700 text-white" : ""
+          }`}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          넓게 찾기
+        </Button>
+      </div>
+
+      {/* 모드 안내 문구 */}
+      <p className="text-xs text-muted-foreground">
+        {searchMode === "exact" ? (
+          <>입력한 키워드가 프로필에 <span className="font-medium">직접 포함</span>된 사람만 검색합니다.</>
+        ) : (
+          <span className="text-purple-600">AI가 관련 키워드를 확장하여 더 많은 동료를 찾습니다.</span>
+        )}
+      </p>
 
       {/* 검색 입력 */}
       <div className="flex gap-2">
@@ -247,8 +286,11 @@ export function SemanticSearch({
           >
             <span className="flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
-              AI 분석 결과
-              {searchMeta.usedFallback && (
+              {searchMeta.searchMode === "exact" ? "검색 결과" : "AI 분석 결과"}
+              {searchMeta.searchMode === "exact" && (
+                <Badge variant="outline" className="text-[10px] py-0 px-1">정확</Badge>
+              )}
+              {searchMeta.searchMode === "broad" && searchMeta.usedFallback && (
                 <span className="text-yellow-600">(기본 모드)</span>
               )}
             </span>

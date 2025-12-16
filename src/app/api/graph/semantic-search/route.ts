@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/openai/embeddings";
 import {
   expandSemanticQuery,
+  createExactSearchQuery,
   expandedQueryToSearchText,
   type ExpandedQuery,
 } from "@/lib/anthropic/queryExpansion";
@@ -49,7 +50,10 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { query } = body;
+    const { query, searchMode = "exact" } = body;
+
+    // searchMode 검증: "exact" 또는 "broad"
+    const validSearchMode = searchMode === "broad" ? "broad" : "exact";
 
     if (!query || typeof query !== "string") {
       return NextResponse.json(
@@ -75,31 +79,43 @@ export async function POST(request: NextRequest) {
 
     const startTime = Date.now();
 
-    // 1. Claude로 쿼리 확장
+    // 1. 검색 모드에 따라 쿼리 확장
     let expandedQuery: ExpandedQuery | null = null;
     let usedFallback = false;
 
-    try {
-      expandedQuery = await expandSemanticQuery(trimmedQuery);
-      if (expandedQuery && expandedQuery.confidence < 0.5) {
+    if (validSearchMode === "exact") {
+      // 정확 모드: LLM 확장 없이 직접 키워드 매칭
+      expandedQuery = createExactSearchQuery(trimmedQuery);
+    } else {
+      // 넓게 모드: Claude로 쿼리 확장
+      try {
+        expandedQuery = await expandSemanticQuery(trimmedQuery);
+        if (expandedQuery && expandedQuery.confidence < 0.5) {
+          usedFallback = true;
+        }
+      } catch (error) {
+        console.error("Query expansion error:", error);
         usedFallback = true;
       }
-    } catch (error) {
-      console.error("Query expansion error:", error);
-      usedFallback = true;
-    }
 
-    if (!expandedQuery) {
-      // 폴백: 기본 확장
-      expandedQuery = {
-        originalQuery: trimmedQuery,
-        expandedDescription: trimmedQuery,
-        suggestedMbtiTypes: [],
-        suggestedHobbyTags: [],
-        searchKeywords: trimmedQuery.split(/\s+/),
-        confidence: 0.3,
-      };
-      usedFallback = true;
+      if (!expandedQuery) {
+        // 폴백: 기본 확장
+        const keywords = trimmedQuery.split(/\s+/).filter(k => k.length > 1);
+        expandedQuery = {
+          originalQuery: trimmedQuery,
+          expandedDescription: trimmedQuery,
+          suggestedMbtiTypes: [],
+          suggestedHobbyTags: [],
+          searchKeywords: keywords,
+          profileFieldHints: {
+            collaborationStyle: keywords,
+            strengths: keywords,
+            preferredPeopleType: keywords,
+          },
+          confidence: 0.3,
+        };
+        usedFallback = true;
+      }
     }
 
     // 2. 확장된 쿼리로 임베딩 생성
@@ -145,6 +161,7 @@ export async function POST(request: NextRequest) {
             totalResults: 0,
             searchTime: Date.now() - startTime,
             usedFallback,
+            searchMode: validSearchMode,
           },
         },
       });
@@ -229,6 +246,7 @@ export async function POST(request: NextRequest) {
           totalResults: searchResults.length,
           searchTime,
           usedFallback,
+          searchMode: validSearchMode,
         },
       },
     });

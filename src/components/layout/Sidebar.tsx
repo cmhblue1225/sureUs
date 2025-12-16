@@ -44,26 +44,33 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-card border-r transition-all duration-300",
+        "flex h-full flex-col bg-card border-r transition-all duration-300 ease-in-out overflow-hidden",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo */}
       <div className={cn(
-        "flex h-16 items-center border-b",
+        "flex h-16 items-center border-b transition-all duration-300 ease-in-out",
         isCollapsed ? "justify-center px-2" : "px-6"
       )}>
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Network className="w-5 h-5 text-primary-foreground" />
           </div>
-          {!isCollapsed && <span className="font-bold text-xl">sureUs</span>}
+          <span
+            className={cn(
+              "font-bold text-xl whitespace-nowrap transition-all duration-300 ease-in-out",
+              isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+            )}
+          >
+            sureUs
+          </span>
         </Link>
       </div>
 
       {/* Navigation */}
       <nav className={cn(
-        "flex-1 py-4 space-y-1",
+        "flex-1 py-4 space-y-1 transition-all duration-300 ease-in-out",
         isCollapsed ? "px-2" : "px-3"
       )}>
         {navigation.map((item) => {
@@ -81,7 +88,7 @@ export function Sidebar() {
               href={item.href}
               title={isCollapsed ? item.name : undefined}
               className={cn(
-                "flex items-center gap-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "flex items-center gap-3 py-2 text-sm font-medium rounded-md transition-all duration-300 ease-in-out overflow-hidden",
                 isCollapsed ? "justify-center px-2" : "px-3",
                 isActive
                   ? "bg-primary text-primary-foreground"
@@ -89,7 +96,14 @@ export function Sidebar() {
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && <span>{item.name}</span>}
+              <span
+                className={cn(
+                  "whitespace-nowrap transition-all duration-300 ease-in-out",
+                  isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                )}
+              >
+                {item.name}
+              </span>
             </Link>
           );
         })}
@@ -97,19 +111,26 @@ export function Sidebar() {
 
       {/* Logout button */}
       <div className={cn(
-        "border-t",
+        "border-t transition-all duration-300 ease-in-out",
         isCollapsed ? "p-2" : "p-3"
       )}>
         <button
           onClick={handleLogout}
           title={isCollapsed ? "로그아웃" : undefined}
           className={cn(
-            "flex items-center gap-3 py-2 w-full text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors",
+            "flex items-center gap-3 py-2 w-full text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-all duration-300 ease-in-out overflow-hidden",
             isCollapsed ? "justify-center px-2" : "px-3"
           )}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>로그아웃</span>}
+          <span
+            className={cn(
+              "whitespace-nowrap transition-all duration-300 ease-in-out",
+              isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+            )}
+          >
+            로그아웃
+          </span>
         </button>
       </div>
     </div>
