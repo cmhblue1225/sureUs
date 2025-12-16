@@ -14,11 +14,31 @@ import {
   generateProfileEmbeddings,
   type ProfileFallbackContext,
 } from "../lib/openai/embeddings";
-import dotenv from "dotenv";
-import path from "path";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
-// Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+// Load environment variables from .env.local
+function loadEnv() {
+  try {
+    const envPath = resolve(process.cwd(), ".env.local");
+    const envContent = readFileSync(envPath, "utf-8");
+
+    envContent.split("\n").forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#")) {
+        const [key, ...valueParts] = trimmed.split("=");
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join("=").replace(/^["']|["']$/g, "");
+          process.env[key] = value;
+        }
+      }
+    });
+  } catch (error) {
+    console.log("Note: .env.local not found, using existing environment variables");
+  }
+}
+
+loadEnv();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

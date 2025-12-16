@@ -22,9 +22,9 @@ export function MbtiCard({ type, isSelected, onClick }: MbtiCardProps) {
       whileTap="tap"
       onClick={onClick}
       className={cn(
-        "relative p-4 rounded-xl border-2 transition-colors",
+        "relative p-3 lg:p-4 rounded-xl lg:rounded-2xl border-2 transition-colors",
         "flex flex-col items-center justify-center gap-1",
-        "min-h-[80px] w-full",
+        "min-h-[70px] lg:min-h-[90px] w-full",
         isSelected
           ? "bg-white/25 border-white shadow-lg"
           : "bg-white/10 border-white/20 hover:bg-white/15"
@@ -48,7 +48,7 @@ export function MbtiCard({ type, isSelected, onClick }: MbtiCardProps) {
       {/* MBTI 타입 */}
       <span
         className={cn(
-          "text-lg font-bold transition-colors",
+          "text-base lg:text-lg font-bold transition-colors",
           isSelected ? "text-white" : "text-white/90"
         )}
       >
@@ -58,7 +58,7 @@ export function MbtiCard({ type, isSelected, onClick }: MbtiCardProps) {
       {/* 설명 */}
       <span
         className={cn(
-          "text-xs transition-colors",
+          "text-[10px] lg:text-xs transition-colors",
           isSelected ? "text-white/90" : "text-white/60"
         )}
       >

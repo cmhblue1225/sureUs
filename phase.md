@@ -1,8 +1,102 @@
 # sureNet 개발 진행 현황
 
-> 마지막 업데이트: 2025-12-16
+> 마지막 업데이트: 2025-12-17
 
-## 현재 Phase: 13 완료 (온보딩 플로우 구현)
+## 현재 Phase: 14 완료 (프로젝트 진단 및 개선)
+
+---
+
+## Phase 14: 프로젝트 진단 및 개선
+**상태: 완료**
+
+### 진단 결과 요약
+
+| 항목 | Before | After | 상태 |
+|------|--------|-------|------|
+| 임베딩 보유 프로필 | 4/34 (12%) | 34/34 (100%) | ✅ 해결 |
+| 보안 취약 함수 (search_path) | 7개 | 0개 | ✅ 해결 |
+| RLS 성능 이슈 정책 | 40+개 | 0개 | ✅ 해결 |
+| 누락 FK 인덱스 | 4개 | 0개 | ✅ 해결 |
+| 온보딩 상태 불일치 | 34개 | 0개 | ✅ 해결 |
+
+### 14-1. 임베딩 동기화 문제 해결
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Fallback 임베딩 로직 추가 | ✅ 완료 | `src/lib/openai/embeddings.ts` |
+| Profile API Fallback 적용 (POST) | ✅ 완료 | `src/app/api/profile/route.ts` |
+| Profile API Fallback 적용 (PUT) | ✅ 완료 | `src/app/api/profile/route.ts` |
+| 임베딩 일괄 재생성 스크립트 | ✅ 완료 | `src/scripts/regenerate-embeddings.ts` |
+| 30개 누락 임베딩 생성 | ✅ 완료 | 스크립트 실행 (30/30 성공) |
+
+**근본 원인**: 프로필 텍스트 필드(협업스타일, 강점 등)가 없을 경우 임베딩 생성 안됨
+
+**해결**: 텍스트 필드가 없을 때 기본 정보(부서, 직군, MBTI, 취미 태그)로 Fallback 임베딩 생성
+```typescript
+// Fallback 텍스트 형식
+"부서: ${department} | 직군: ${jobRole} | MBTI: ${mbti} | 취미: ${hobbies.join(', ')}"
+```
+
+### 14-2. 보안 취약점 수정
+| 작업 | 상태 | 마이그레이션 |
+|------|------|------|
+| 7개 함수 search_path 수정 | ✅ 완료 | `fix_function_search_paths_v2` |
+
+수정된 함수 목록:
+- `check_field_visibility`
+- `update_updated_at`
+- `update_post_like_count`
+- `update_post_comment_count`
+- `calculate_tag_overlap`
+- `get_common_tags`
+- `update_club_member_count`
+
+### 14-3. RLS 정책 성능 최적화
+| 작업 | 상태 | 마이그레이션 |
+|------|------|------|
+| users RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part1` |
+| profiles RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part2` |
+| profile_tags/embeddings RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part3` |
+| conversations/messages RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part4` |
+| notifications/matches_cache RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part5` |
+| clubs/club_* RLS 최적화 | ✅ 완료 | `optimize_rls_policies_part6` |
+
+**개선 내용**: `auth.uid()` → `(SELECT auth.uid())` 변경 (매 행 재평가 방지)
+
+### 14-4. 데이터 정규화
+| 작업 | 상태 | 마이그레이션 |
+|------|------|------|
+| 온보딩 상태 정규화 | ✅ 완료 | `normalize_onboarding_status` |
+| FK 인덱스 추가 | ✅ 완료 | `add_missing_fk_indexes` |
+
+추가된 인덱스:
+- `idx_club_join_requests_reviewed_by`
+- `idx_club_likes_user_id`
+- `idx_matches_cache_matched_user_id`
+- `idx_messages_sender_id`
+
+### 적용된 마이그레이션 (9개)
+| 순서 | 마이그레이션명 | 내용 |
+|------|---------------|------|
+| 1 | `normalize_onboarding_status` | 온보딩 상태 정규화 |
+| 2 | `fix_function_search_paths_v2` | 7개 함수 보안 수정 |
+| 3 | `optimize_rls_policies_part1` | users RLS 최적화 |
+| 4 | `optimize_rls_policies_part2` | profiles RLS 최적화 |
+| 5 | `optimize_rls_policies_part3` | profile_tags/embeddings RLS 최적화 |
+| 6 | `optimize_rls_policies_part4` | conversations/messages RLS 최적화 |
+| 7 | `optimize_rls_policies_part5` | notifications/matches_cache RLS 최적화 |
+| 8 | `optimize_rls_policies_part6` | clubs/club_* RLS 최적화 |
+| 9 | `add_missing_fk_indexes` | 4개 FK 인덱스 추가 |
+
+### 신규 생성 파일
+| 파일 | 용도 |
+|------|------|
+| `src/scripts/regenerate-embeddings.ts` | 임베딩 일괄 재생성 CLI 스크립트 |
+
+### 스크립트 사용법
+```bash
+# 임베딩 없는 프로필에 대해 일괄 재생성
+npx tsx src/scripts/regenerate-embeddings.ts
+```
 
 ---
 
@@ -107,13 +201,14 @@
 - [x] 프로필 CRUD API
 - [x] 프로필 수정 페이지
 - [x] 취미 태그 시스템
-- [x] 임베딩 자동 생성
+- [x] 임베딩 자동 생성 (Fallback 지원)
 - [x] 타 사용자 프로필 보기
 - [x] 11개 확장 프로필 필드 (개인정보, 업무정보, 관심사, 커리어)
 - [x] 태그 직접입력 기능
 - [x] 필드별 공개 범위 설정
 - [x] AI 태그 추천 기능
 - [x] AI 프로필 작성 도움 기능 (협업스타일, 강점, 선호동료, 업무설명, 커리어목표)
+- [x] 임베딩 일괄 재생성 스크립트
 
 ### 온보딩
 - [x] 8단계 온보딩 wizard
@@ -155,9 +250,11 @@
 - [x] 설정 페이지
 
 ### 데이터베이스
-- [x] 21개 마이그레이션 적용
-- [x] RLS 정책 설정
+- [x] 36개 마이그레이션 적용 (Phase 14에서 9개 추가)
+- [x] RLS 정책 설정 및 성능 최적화
 - [x] pgvector 인덱스
+- [x] 보안 함수 search_path 수정
+- [x] FK 인덱스 추가
 
 ---
 
@@ -186,6 +283,7 @@
 | 2025-12-16 | 11 | 프로필 필드 확장 (11개 필드 추가, 태그 직접입력, 임베딩 연동) |
 | 2025-12-16 | 12 | 프로필 LLM 도움 기능 (AI 태그 추천, AI 텍스트 생성) |
 | 2025-12-16 | 13 | 온보딩 플로우 구현 (8단계 wizard, Framer Motion 애니메이션) |
+| 2025-12-17 | 14 | 프로젝트 진단 및 개선 (임베딩 88% 복구, 보안 수정, RLS 최적화) |
 
 ---
 

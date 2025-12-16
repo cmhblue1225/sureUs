@@ -11,7 +11,8 @@ import { StepWorkInfo } from "./StepWorkInfo";
 import { StepHobbies } from "./StepHobbies";
 import { StepIntroduction } from "./StepIntroduction";
 import { StepComplete } from "./StepComplete";
-import { pageVariants } from "@/lib/animations";
+import { MusicControl } from "./MusicControl";
+import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 import {
   initialOnboardingState,
   type OnboardingState,
@@ -26,6 +27,19 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
   const [state, setState] = useState<OnboardingState>(initialOnboardingState);
   const [isLoading, setIsLoading] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
+
+  // 배경음악 훅
+  const {
+    isPlaying,
+    isMuted,
+    play: playMusic,
+    toggle: toggleMusic,
+    toggleMute,
+  } = useBackgroundMusic({
+    src: "/sounds/onboarding-bgm.mp3",
+    volume: 0.3,
+    loop: true,
+  });
 
   // 상태 업데이트
   const updateState = useCallback((updates: Partial<OnboardingState>) => {
@@ -133,7 +147,7 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
 
     switch (state.currentStep) {
       case 0:
-        return <StepWelcome onNext={goNext} />;
+        return <StepWelcome onNext={goNext} onStartMusic={playMusic} />;
       case 1:
         return <StepBasicInfo {...commonProps} />;
       case 2:
@@ -177,13 +191,24 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
     }),
   };
 
+  // Welcome과 Complete 화면에서는 카드 없이 전체 화면 사용
+  const isFullScreen = state.currentStep === 0 || state.currentStep === 7;
+
   return (
-    <div className="min-h-screen onboarding-bg">
+    <div className="min-h-screen h-screen onboarding-bg overflow-hidden">
       {/* 진행률 바 */}
       <ProgressBar currentStep={state.currentStep} />
 
+      {/* 배경음악 컨트롤 */}
+      <MusicControl
+        isPlaying={isPlaying}
+        isMuted={isMuted}
+        onToggle={toggleMusic}
+        onToggleMute={toggleMute}
+      />
+
       {/* 단계 컨텐츠 */}
-      <div className="container mx-auto py-16">
+      <div className="h-full flex items-center justify-center px-4 py-8 lg:py-12">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={state.currentStep}
@@ -192,8 +217,27 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
             initial="initial"
             animate="animate"
             exit="exit"
+            className={
+              isFullScreen
+                ? "w-full h-full flex items-center justify-center"
+                : "w-full max-w-4xl"
+            }
           >
-            {renderStep()}
+            {isFullScreen ? (
+              renderStep()
+            ) : (
+              // Glass morphism 카드 래퍼
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 sm:p-8 lg:p-12 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                  {renderStep()}
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
