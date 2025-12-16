@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2025-12-16
 
-## 현재 Phase: 7 완료 (동호회 기능 구현)
+## 현재 Phase: 8 완료 (의미 검색 기능)
 
 ---
 
@@ -160,6 +160,7 @@
 | 2025-12-15 | 7 | 동호회 기능 구현 시작 |
 | 2025-12-16 | 7 | 투표 기능, 갤러리 기능, 추천 알고리즘, LLM 통합 완료 |
 | 2025-12-16 | 7 | member_count 버그 수정, 탭 네비게이션 성능 최적화 (ClubContext) |
+| 2025-12-16 | 8 | 네트워크 의미 검색 기능 구현 (Claude 쿼리 확장 + 벡터 검색) |
 
 ---
 
@@ -250,3 +251,53 @@
 | 추천 이유 설명 API | ✅ 완료 | `src/app/api/clubs/recommendations/explain/route.ts` |
 
 > **참고**: LLM 기능 사용을 위해 `ANTHROPIC_API_KEY` 환경변수 설정 필요
+
+---
+
+## Phase 8: 의미 검색 기능 구현
+**상태: 완료**
+
+### 8-1. 쿼리 확장 모듈
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Claude 쿼리 확장 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| MBTI/태그 추천 로직 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| 폴백 처리 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+
+### 8-2. 하이브리드 검색 모듈
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 벡터 유사도 검색 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| MBTI 매칭 점수 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 태그 매칭 점수 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 매칭 이유 생성 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+
+### 8-3. 의미 검색 API
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| POST /api/graph/semantic-search | ✅ 완료 | `src/app/api/graph/semantic-search/route.ts` |
+| 쿼리 임베딩 생성 | ✅ 완료 | `src/app/api/graph/semantic-search/route.ts` |
+| 그래프 노드 변환 | ✅ 완료 | `src/app/api/graph/semantic-search/route.ts` |
+
+### 8-4. UI 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| SemanticSearch 컴포넌트 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
+| 예시 쿼리 표시 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
+| AI 분석 결과 표시 | ✅ 완료 | `src/components/graph/SemanticSearch.tsx` |
+
+### 8-5. 네트워크 페이지 통합
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 탭 네비게이션 (키워드/의미검색) | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 의미 검색 결과 그래프 표시 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+
+### 점수 가중치
+| 요소 | 가중치 |
+|------|--------|
+| 벡터 유사도 | 50% |
+| MBTI 매칭 | 25% |
+| 태그 매칭 | 15% |
+| 텍스트 매칭 | 10% |
+
+> **참고**: 의미 검색은 Claude + OpenAI 임베딩을 조합한 하이브리드 방식

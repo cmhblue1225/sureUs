@@ -24,10 +24,12 @@ import {
   CustomEdge,
   GraphControls,
   ProfileModal,
+  SemanticSearch,
   type EnhancedUserNodeData,
   type CustomEdgeData,
 } from "@/components/graph";
 import { KeywordFilter } from "@/components/graph/KeywordFilter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGraphInteraction } from "@/hooks/useGraphInteraction";
 import type {
   ClusteringResult,
@@ -63,6 +65,38 @@ export default function NetworkPage() {
   // 키워드 필터 상태
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filterMode, setFilterMode] = useState<"any" | "all">("any");
+
+  // 의미 검색 상태
+  const [searchMode, setSearchMode] = useState<"keyword" | "semantic">("keyword");
+  const [semanticResults, setSemanticResults] = useState<{
+    nodes: Array<{
+      id: string;
+      userId: string;
+      name: string;
+      department: string;
+      jobRole: string;
+      officeLocation: string;
+      mbti?: string;
+      avatarUrl?: string;
+      hobbies: string[];
+      isCurrentUser: boolean;
+      clusterId: string;
+      position: { x: number; y: number };
+      matchScore?: number;
+      matchReasons?: string[];
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      similarity: number;
+      commonTags: string[];
+      connectionType: string;
+      strengthLevel: string;
+      mbtiCompatible: boolean;
+    }>;
+  } | null>(null);
+  const [semanticLoading, setSemanticLoading] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -212,6 +246,51 @@ export default function NetworkPage() {
     }));
   }, [clusteringResult]);
 
+  // 의미 검색 결과를 그래프에 반영
+  useEffect(() => {
+    if (searchMode !== "semantic" || !semanticResults) return;
+
+    // 의미 검색 결과를 Flow 노드/엣지로 변환
+    const flowNodes: Node[] = semanticResults.nodes.map((node) => ({
+      id: node.id,
+      type: "enhancedUser",
+      data: {
+        ...node,
+        isHighlighted: interaction.isNodeHighlighted(node.id),
+        isDimmed: interaction.isNodeDimmed(node.id),
+        clusterColor: "#8B5CF6", // 의미 검색용 보라색
+        onHover: interaction.onNodeHover,
+      },
+      position: node.position,
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+    }));
+
+    const flowEdges: Edge[] = semanticResults.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: "custom",
+      data: {
+        similarity: edge.similarity,
+        commonTags: edge.commonTags,
+        connectionType: edge.connectionType,
+        strengthLevel: edge.strengthLevel,
+        mbtiCompatible: edge.mbtiCompatible,
+        isHighlighted: interaction.isEdgeHighlighted(edge.id),
+        isDimmed: interaction.isEdgeDimmed(edge.id),
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 15,
+        height: 15,
+      },
+    }));
+
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [searchMode, semanticResults, interaction.hoveredNodeId, interaction.selectedNodeId, setNodes, setEdges]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[600px]">
@@ -312,15 +391,30 @@ export default function NetworkPage() {
             />
           )}
 
-          {/* Keyword Filter */}
+          {/* Search Tabs */}
           <Card>
-            <CardContent className="pt-6">
-              <KeywordFilter
-                selectedTags={selectedTags}
-                onTagsChange={setSelectedTags}
-                filterMode={filterMode}
-                onFilterModeChange={setFilterMode}
-              />
+            <CardContent className="pt-4">
+              <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as "keyword" | "semantic")}>
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="keyword" className="flex-1">키워드</TabsTrigger>
+                  <TabsTrigger value="semantic" className="flex-1">의미검색</TabsTrigger>
+                </TabsList>
+                <TabsContent value="keyword" className="mt-0">
+                  <KeywordFilter
+                    selectedTags={selectedTags}
+                    onTagsChange={setSelectedTags}
+                    filterMode={filterMode}
+                    onFilterModeChange={setFilterMode}
+                  />
+                </TabsContent>
+                <TabsContent value="semantic" className="mt-0">
+                  <SemanticSearch
+                    onSearchResults={setSemanticResults}
+                    isLoading={semanticLoading}
+                    setIsLoading={setSemanticLoading}
+                  />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
