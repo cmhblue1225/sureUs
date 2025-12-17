@@ -2,7 +2,116 @@
 
 > 마지막 업데이트: 2025-12-17
 
-## 현재 Phase: 16 완료 (온보딩 서비스 핵심 기능 추가)
+## 현재 Phase: 18.1 완료 (신입사원 관리 + 온보딩 자동 입력)
+
+---
+
+## Phase 18: 신입사원 관리 시스템
+**상태: 완료**
+
+### 목표
+관리자 전용 신입사원 계정 생성 기능 구현
+
+### 18-1. 데이터베이스 스키마
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| employee_sequences 테이블 | ✅ 완료 | `add_employee_management` 마이그레이션 |
+| users 테이블 컬럼 추가 | ✅ 완료 | employee_id, phone_number, birthdate, address, gender |
+| generate_employee_id() 함수 | ✅ 완료 | 사번 자동 생성 (연도+순번) |
+
+### 18-2. API 라우트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 신입사원 목록/등록 API | ✅ 완료 | `src/app/api/admin/employees/route.ts` |
+| CSV 파싱 API | ✅ 완료 | `src/app/api/admin/employees/csv/route.ts` |
+
+### 18-3. UI 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| EmployeeRegistrationForm | ✅ 완료 | `src/components/admin/EmployeeRegistrationForm.tsx` |
+| CSVUploadSection | ✅ 완료 | `src/components/admin/CSVUploadSection.tsx` |
+| EmployeeListTable | ✅ 완료 | `src/components/admin/EmployeeListTable.tsx` |
+| Table 컴포넌트 | ✅ 완료 | `src/components/ui/table.tsx` |
+
+### 18-4. 페이지 및 네비게이션
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 신입사원 관리 페이지 | ✅ 완료 | `src/app/(main)/admin/employees/page.tsx` |
+| Sidebar 관리자 메뉴 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+
+### 18-5. 유틸리티
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| CSV 파싱/생성 유틸 | ✅ 완료 | `src/lib/utils/csv.ts` |
+| employee 타입 정의 | ✅ 완료 | `src/types/employee.ts` |
+
+### 기능 요약
+- **일괄 등록**: 웹 UI에서 1-30명 동시 등록
+- **CSV 업로드**: 템플릿 다운로드 → 데이터 입력 → 업로드 → 미리보기 → 등록
+- **자동 사번 생성**: 2025001 형식 (연도+순번)
+- **초기 비밀번호**: 생년월일 기반 (예: 19950315) 또는 기본값 `sure2025`
+- **이메일 도메인 검증**: @suresofttech.com 필수
+- **관리자 전용**: Sidebar에 관리자 메뉴 조건부 표시
+
+---
+
+## Phase 18.1: 온보딩 자동 입력
+**상태: 완료**
+
+### 목표
+관리자가 신입사원 계정 생성 시 입력한 정보를 온보딩에서 자동으로 채워주는 기능
+
+### 수정된 파일
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| InitialProfileData 타입 | ✅ 완료 | `src/types/onboarding.ts` |
+| createInitialStateFromProfile 함수 | ✅ 완료 | `src/types/onboarding.ts` |
+| 온보딩 페이지 프로필 조회 | ✅ 완료 | `src/app/onboarding/page.tsx` |
+| OnboardingWizard initialProfile 처리 | ✅ 완료 | `src/components/onboarding/OnboardingWizard.tsx` |
+
+### 기능 요약
+- 관리자 입력 데이터 (부서, 실, 팀) 온보딩 Step 1에 자동 입력
+- 신입사원은 직급, 근무지 등 추가 정보만 입력하면 됨
+
+---
+
+## Phase 17: 조직도 기반 온보딩 시스템 업데이트
+**상태: 완료**
+
+### 목표
+실제 회사 조직 구조를 반영하여 온보딩 및 프로필 시스템 업데이트
+
+### 17-1. 데이터베이스 스키마
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| profiles 테이블 컬럼 추가 | ✅ 완료 | org_level1, org_level2, org_level3, job_position |
+
+### 17-2. 상수 파일
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 조직 구조 상수 | ✅ 완료 | `src/lib/constants/organization.ts` |
+| 직급 상수 | ✅ 완료 | `src/lib/constants/jobPositions.ts` |
+| 근무지 상수 | ✅ 완료 | `src/lib/constants/locations.ts` |
+
+### 17-3. UI 컴포넌트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| OrganizationSelector | ✅ 완료 | `src/components/ui/OrganizationSelector.tsx` |
+| StepBasicInfo 수정 | ✅ 완료 | `src/components/onboarding/StepBasicInfo.tsx` |
+| ProfileForm 수정 | ✅ 완료 | `src/components/profile/ProfileForm.tsx` |
+
+### 17-4. 매칭 알고리즘
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| departmentScoring 수정 | ✅ 완료 | `src/lib/matching/departmentScoring.ts` |
+| jobRoleScoring 수정 | ✅ 완료 | `src/lib/matching/jobRoleScoring.ts` |
+
+### 기능 요약
+- 3단계 조직 선택: 연구소/센터 → 실 → 팀
+- 새로운 직급 체계: 수석연구원, 책임연구원 등
+- 조직 간 시너지 점수 매칭 알고리즘
+
+---
 
 ---
 

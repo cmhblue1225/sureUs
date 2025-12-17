@@ -250,3 +250,63 @@ export interface StepProps {
   onPrev: () => void;
   onSkip?: () => void;
 }
+
+// 초기 프로필 데이터 (관리자가 생성한 계정의 기존 정보)
+export interface InitialProfileData {
+  org_level1?: string | null;
+  org_level2?: string | null;
+  org_level3?: string | null;
+  job_position?: string | null;
+  office_location?: string | null;
+  department?: string | null;
+  mbti?: string | null;
+  age_range?: string | null;
+  living_location?: string | null;
+  hometown?: string | null;
+  education?: string | null;
+  work_description?: string | null;
+  tech_stack?: string | null;
+  certifications?: string | null;
+  languages?: string | null;
+  interests?: string | null;
+  favorite_food?: string | null;
+  collaboration_style?: string | null;
+  strengths?: string | null;
+  preferred_people_type?: string | null;
+  career_goals?: string | null;
+}
+
+// InitialProfileData를 OnboardingState로 변환하는 헬퍼 함수
+export function createInitialStateFromProfile(
+  profile: InitialProfileData | null
+): OnboardingState {
+  if (!profile) {
+    return initialOnboardingState;
+  }
+
+  return {
+    ...initialOnboardingState,
+    orgLevel1: profile.org_level1 || "",
+    orgLevel2: profile.org_level2 || "",
+    orgLevel3: profile.org_level3 || "",
+    jobPosition: profile.job_position || "",
+    officeLocation: profile.office_location || "",
+    department: profile.department || "",
+    mbti: profile.mbti || "",
+    ageRange: profile.age_range || "",
+    livingLocation: profile.living_location || "",
+    hometown: profile.hometown || "",
+    education: profile.education || "",
+    workDescription: profile.work_description || "",
+    techStack: profile.tech_stack || "",
+    certifications: profile.certifications || "",
+    languages: profile.languages || "",
+    interests: profile.interests || "",
+    favoriteFood: profile.favorite_food || "",
+    collaborationStyle: profile.collaboration_style || "",
+    strengths: profile.strengths || "",
+    preferredPeopleType: profile.preferred_people_type || "",
+    careerGoals: profile.career_goals || "",
+    hobbies: new Set<string>(),
+  };
+}

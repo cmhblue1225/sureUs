@@ -16,17 +16,29 @@ import { AudioConsentModal } from "./AudioConsentModal";
 import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 import {
   initialOnboardingState,
+  createInitialStateFromProfile,
   type OnboardingState,
   type OnboardingStep,
+  type InitialProfileData,
 } from "@/types/onboarding";
 
 interface OnboardingWizardProps {
   userId: string;
   userName: string;
+  initialProfile?: InitialProfileData | null;
 }
 
-export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
-  const [state, setState] = useState<OnboardingState>(initialOnboardingState);
+export function OnboardingWizard({
+  userId,
+  userName,
+  initialProfile,
+}: OnboardingWizardProps) {
+  // 관리자가 입력한 프로필 정보가 있으면 초기 상태에 반영
+  const [state, setState] = useState<OnboardingState>(() =>
+    initialProfile
+      ? createInitialStateFromProfile(initialProfile)
+      : initialOnboardingState
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [showAudioModal, setShowAudioModal] = useState(true);
@@ -95,10 +107,16 @@ export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // 기본 정보 (필수)
+          // 기본 정보 (필수) - 새로운 조직 구조
+          org_level1: currentState.orgLevel1,
+          org_level2: currentState.orgLevel2 || null,
+          org_level3: currentState.orgLevel3 || null,
+          job_position: currentState.jobPosition,
+          office_location: currentState.officeLocation,
+
+          // Legacy 필드 (하위 호환성)
           department: currentState.department,
           job_role: currentState.jobRole,
-          office_location: currentState.officeLocation,
 
           // MBTI
           mbti: currentState.mbti || null,
