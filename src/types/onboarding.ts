@@ -2,9 +2,9 @@
  * 온보딩 타입 정의
  */
 
-// 온보딩 단계 (0-8)
-// 0: Intro (서비스 소개), 1: Welcome, 2-7: 정보 입력, 8: Complete
-export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+// 온보딩 단계 (0-7)
+// 0: Intro (서비스 소개), 1-6: 정보 입력, 7: Complete
+export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 // 온보딩 상태 인터페이스
 export interface OnboardingState {
@@ -184,48 +184,42 @@ export const STEP_INFO: Record<OnboardingStep, StepInfo> = {
     required: false,
   },
   1: {
-    title: "환영합니다!",
-    description: "sureNet에서 나와 맞는 동료를 찾아보세요",
-    icon: "👋",
-    required: false,
-  },
-  2: {
     title: "기본 정보",
     description: "회사에서의 기본 정보를 알려주세요",
     icon: "📋",
     required: true,
   },
-  3: {
+  2: {
     title: "성격 & MBTI",
     description: "당신의 MBTI를 선택해주세요",
     icon: "🧠",
     required: false,
   },
-  4: {
+  3: {
     title: "개인 정보",
     description: "조금 더 자세한 정보를 알려주세요",
     icon: "👤",
     required: false,
   },
-  5: {
+  4: {
     title: "업무 정보",
     description: "업무에 대해 알려주세요",
     icon: "💼",
     required: false,
   },
-  6: {
+  5: {
     title: "취미 & 관심사",
     description: "취미와 관심사를 공유해주세요",
     icon: "🎯",
     required: false,
   },
-  7: {
+  6: {
     title: "자기 소개",
     description: "나를 표현해보세요",
     icon: "✍️",
     required: false,
   },
-  8: {
+  7: {
     title: "완료!",
     description: "프로필이 생성되었습니다",
     icon: "🎊",

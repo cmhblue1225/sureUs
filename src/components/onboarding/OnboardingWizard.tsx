@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { ProgressBar } from "./ProgressBar";
 import { StepIntro } from "./StepIntro";
-import { StepWelcome } from "./StepWelcome";
 import { StepBasicInfo } from "./StepBasicInfo";
 import { StepMbti } from "./StepMbti";
 import { StepPersonalInfo } from "./StepPersonalInfo";
@@ -60,10 +59,10 @@ export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
   const goNext = useCallback(() => {
     setDirection(1);
     setState((prev) => {
-      const nextStep = Math.min(prev.currentStep + 1, 8) as OnboardingStep;
+      const nextStep = Math.min(prev.currentStep + 1, 7) as OnboardingStep;
 
-      // Step 7에서 8로 넘어갈 때 프로필 저장
-      if (prev.currentStep === 7 && nextStep === 8) {
+      // Step 6에서 7로 넘어갈 때 프로필 저장
+      if (prev.currentStep === 6 && nextStep === 7) {
         saveProfile(prev);
       }
 
@@ -159,20 +158,18 @@ export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
       case 0:
         return <StepIntro userName={userName} onNext={goNext} onStartMusic={playMusic} />;
       case 1:
-        return <StepWelcome onNext={goNext} />;
-      case 2:
         return <StepBasicInfo {...commonProps} />;
-      case 3:
+      case 2:
         return <StepMbti {...commonProps} />;
-      case 4:
+      case 3:
         return <StepPersonalInfo {...commonProps} />;
-      case 5:
+      case 4:
         return <StepWorkInfo {...commonProps} />;
-      case 6:
+      case 5:
         return <StepHobbies {...commonProps} />;
-      case 7:
+      case 6:
         return <StepIntroduction {...commonProps} />;
-      case 8:
+      case 7:
         return <StepComplete state={state} isLoading={isLoading} />;
       default:
         return null;
@@ -203,8 +200,8 @@ export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
     }),
   };
 
-  // Intro, Welcome, Complete 화면에서는 카드 없이 전체 화면 사용
-  const isFullScreen = state.currentStep === 0 || state.currentStep === 1 || state.currentStep === 8;
+  // Intro, Complete 화면에서는 카드 없이 전체 화면 사용
+  const isFullScreen = state.currentStep === 0 || state.currentStep === 7;
 
   return (
     <div className="min-h-screen h-screen onboarding-bg overflow-hidden">

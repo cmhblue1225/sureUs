@@ -8,13 +8,13 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep }: ProgressBarProps) {
-  // Step 0 (Intro), Step 1 (Welcome), Step 8 (Complete)은 진행률에서 제외
-  // 실제 진행률은 Step 2-7 (6단계)
-  const progressStep = Math.max(0, Math.min(currentStep - 2, TOTAL_PROGRESS_STEPS));
+  // Step 0 (Intro), Step 7 (Complete)은 진행률에서 제외
+  // 실제 진행률은 Step 1-6 (6단계)
+  const progressStep = Math.max(0, Math.min(currentStep - 1, TOTAL_PROGRESS_STEPS));
   const progress = (progressStep / TOTAL_PROGRESS_STEPS) * 100;
 
-  // Intro (step 0)과 Welcome (step 1)에서는 진행률 바 숨김
-  if (currentStep === 0 || currentStep === 1) {
+  // Intro (step 0)에서는 진행률 바 숨김
+  if (currentStep === 0) {
     return null;
   }
 
@@ -39,7 +39,7 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
           animate={{ opacity: 1, y: 0 }}
           className="text-sm text-white/80 font-medium"
         >
-          {currentStep === 8 ? "완료!" : `${progressStep} / ${TOTAL_PROGRESS_STEPS}`}
+          {currentStep === 7 ? "완료!" : `${progressStep} / ${TOTAL_PROGRESS_STEPS}`}
         </motion.span>
       </div>
     </div>
