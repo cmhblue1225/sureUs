@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface AudioConsentModalProps {
   isOpen: boolean;
@@ -21,82 +21,52 @@ export function AudioConsentModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          transition={{ duration: 0.4 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center px-6"
         >
           {/* 배경 오버레이 */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
+          <div className="absolute inset-0 bg-black/50" />
 
           {/* 모달 카드 */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
             transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 25,
+              duration: 0.4,
+              ease: [0.25, 0.1, 0.25, 1],
             }}
-            className="relative z-10 w-full max-w-md bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl overflow-hidden"
+            className="relative z-10 w-full max-w-sm"
           >
-            {/* 상단 장식 */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400" />
-
-            <div className="p-8 sm:p-10 text-center">
-              {/* 아이콘 */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 400 }}
-                className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center border border-white/20"
-              >
-                <motion.div
-                  animate={{
-                    scale: [1, 1.1, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                >
-                  <Sparkles className="w-10 h-10 text-white" />
-                </motion.div>
-              </motion.div>
-
+            <div className="bg-white/10 backdrop-blur-2xl rounded-2xl border border-white/20 p-8">
               {/* 메시지 */}
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-xl sm:text-2xl font-medium text-white leading-relaxed mb-8"
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-center mb-8"
               >
-                <span className="font-bold">{userName}</span>님을 더욱 자세히 알기 위해
-                <br />
-                온보딩을 시작할게요.
-              </motion.p>
+                <p className="text-white/60 text-sm mb-2">Welcome</p>
+                <p className="text-white text-xl font-medium leading-relaxed">
+                  <span className="font-semibold">{userName}</span>님을 더욱 자세히
+                  <br />
+                  알기 위해 온보딩을 시작할게요
+                </p>
+              </motion.div>
 
               {/* 시작 버튼 */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={onStart}
+                className="w-full py-3.5 bg-white text-gray-900 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-white/95 transition-colors"
               >
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onStart}
-                  className="w-full py-4 px-6 bg-white text-gray-900 rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow text-lg"
-                >
-                  온보딩 시작하기
-                  <ArrowRight className="w-5 h-5" />
-                </motion.button>
-              </motion.div>
+                시작하기
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
             </div>
           </motion.div>
         </motion.div>
