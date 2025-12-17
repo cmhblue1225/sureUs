@@ -26,5 +26,8 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
-  return <OnboardingWizard userId={user.id} />;
+  // 사용자 이름 가져오기 (Auth metadata에서)
+  const userName = (user.user_metadata?.name as string) || "회원";
+
+  return <OnboardingWizard userId={user.id} userName={userName} />;
 }

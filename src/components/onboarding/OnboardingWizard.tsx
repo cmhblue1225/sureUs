@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { ProgressBar } from "./ProgressBar";
+import { StepIntro } from "./StepIntro";
 import { StepWelcome } from "./StepWelcome";
 import { StepBasicInfo } from "./StepBasicInfo";
 import { StepMbti } from "./StepMbti";
@@ -12,6 +13,7 @@ import { StepHobbies } from "./StepHobbies";
 import { StepIntroduction } from "./StepIntroduction";
 import { StepComplete } from "./StepComplete";
 import { MusicControl } from "./MusicControl";
+import { AudioConsentModal } from "./AudioConsentModal";
 import { useBackgroundMusic } from "@/hooks/useBackgroundMusic";
 import {
   initialOnboardingState,
@@ -21,12 +23,14 @@ import {
 
 interface OnboardingWizardProps {
   userId: string;
+  userName: string;
 }
 
-export function OnboardingWizard({ userId }: OnboardingWizardProps) {
+export function OnboardingWizard({ userId, userName }: OnboardingWizardProps) {
   const [state, setState] = useState<OnboardingState>(initialOnboardingState);
   const [isLoading, setIsLoading] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const [showAudioModal, setShowAudioModal] = useState(true);
 
   // 배경음악 훅
   const {
@@ -41,6 +45,12 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
     loop: true,
   });
 
+  // 오디오 모달 핸들러 - 시작 버튼 클릭 시 음악 재생 + 모달 닫기
+  const handleOnboardingStart = useCallback(() => {
+    playMusic();
+    setShowAudioModal(false);
+  }, [playMusic]);
+
   // 상태 업데이트
   const updateState = useCallback((updates: Partial<OnboardingState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -50,10 +60,10 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
   const goNext = useCallback(() => {
     setDirection(1);
     setState((prev) => {
-      const nextStep = Math.min(prev.currentStep + 1, 7) as OnboardingStep;
+      const nextStep = Math.min(prev.currentStep + 1, 8) as OnboardingStep;
 
-      // Step 6에서 7로 넘어갈 때 프로필 저장
-      if (prev.currentStep === 6 && nextStep === 7) {
+      // Step 7에서 8로 넘어갈 때 프로필 저장
+      if (prev.currentStep === 7 && nextStep === 8) {
         saveProfile(prev);
       }
 
@@ -147,20 +157,22 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
 
     switch (state.currentStep) {
       case 0:
-        return <StepWelcome onNext={goNext} onStartMusic={playMusic} />;
+        return <StepIntro userName={userName} onNext={goNext} onStartMusic={playMusic} />;
       case 1:
-        return <StepBasicInfo {...commonProps} />;
+        return <StepWelcome onNext={goNext} />;
       case 2:
-        return <StepMbti {...commonProps} />;
+        return <StepBasicInfo {...commonProps} />;
       case 3:
-        return <StepPersonalInfo {...commonProps} />;
+        return <StepMbti {...commonProps} />;
       case 4:
-        return <StepWorkInfo {...commonProps} />;
+        return <StepPersonalInfo {...commonProps} />;
       case 5:
-        return <StepHobbies {...commonProps} />;
+        return <StepWorkInfo {...commonProps} />;
       case 6:
-        return <StepIntroduction {...commonProps} />;
+        return <StepHobbies {...commonProps} />;
       case 7:
+        return <StepIntroduction {...commonProps} />;
+      case 8:
         return <StepComplete state={state} isLoading={isLoading} />;
       default:
         return null;
@@ -191,56 +203,68 @@ export function OnboardingWizard({ userId }: OnboardingWizardProps) {
     }),
   };
 
-  // Welcome과 Complete 화면에서는 카드 없이 전체 화면 사용
-  const isFullScreen = state.currentStep === 0 || state.currentStep === 7;
+  // Intro, Welcome, Complete 화면에서는 카드 없이 전체 화면 사용
+  const isFullScreen = state.currentStep === 0 || state.currentStep === 1 || state.currentStep === 8;
 
   return (
     <div className="min-h-screen h-screen onboarding-bg overflow-hidden">
-      {/* 진행률 바 */}
-      <ProgressBar currentStep={state.currentStep} />
-
-      {/* 배경음악 컨트롤 */}
-      <MusicControl
-        isPlaying={isPlaying}
-        isMuted={isMuted}
-        onToggle={toggleMusic}
-        onToggleMute={toggleMute}
+      {/* 온보딩 시작 모달 */}
+      <AudioConsentModal
+        isOpen={showAudioModal}
+        userName={userName}
+        onStart={handleOnboardingStart}
       />
 
-      {/* 단계 컨텐츠 */}
-      <div className="h-full flex items-center justify-center px-4 py-8 lg:py-12">
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={state.currentStep}
-            custom={direction}
-            variants={variants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className={
-              isFullScreen
-                ? "w-full h-full flex items-center justify-center"
-                : "w-full max-w-4xl"
-            }
-          >
-            {isFullScreen ? (
-              renderStep()
-            ) : (
-              // Glass morphism 카드 래퍼
+      {/* 모달이 닫힌 후에만 온보딩 UI 표시 */}
+      {!showAudioModal && (
+        <>
+          {/* 진행률 바 */}
+          <ProgressBar currentStep={state.currentStep} />
+
+          {/* 배경음악 컨트롤 */}
+          <MusicControl
+            isPlaying={isPlaying}
+            isMuted={isMuted}
+            onToggle={toggleMusic}
+            onToggleMute={toggleMute}
+          />
+
+          {/* 단계 컨텐츠 */}
+          <div className="h-full flex items-center justify-center px-4 py-8 lg:py-12">
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+                key={state.currentStep}
+                custom={direction}
+                variants={variants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={
+                  isFullScreen
+                    ? "w-full h-full flex items-center justify-center"
+                    : "w-full max-w-4xl"
+                }
               >
-                <div className="p-6 sm:p-8 lg:p-12 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                  {renderStep()}
-                </div>
+                {isFullScreen ? (
+                  renderStep()
+                ) : (
+                  // Glass morphism 카드 래퍼
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+                  >
+                    <div className="p-6 sm:p-8 lg:p-12 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                      {renderStep()}
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+            </AnimatePresence>
+          </div>
+        </>
+      )}
     </div>
   );
 }
