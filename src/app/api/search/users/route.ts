@@ -10,6 +10,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
+    // 새로운 조직 구조 필터
+    const orgLevel1 = searchParams.get("orgLevel1");
+    const orgLevel2 = searchParams.get("orgLevel2");
+    const orgLevel3 = searchParams.get("orgLevel3");
+    const jobPosition = searchParams.get("jobPosition");
+    // 하위 호환성 필터
     const department = searchParams.get("department");
     const jobRole = searchParams.get("jobRole");
     const location = searchParams.get("location");
@@ -55,7 +61,24 @@ export async function GET(request: Request) {
       .is("users.deleted_at", null)
       .neq("user_id", user.id);
 
-    // Apply filters
+    // Apply filters - 새로운 조직 구조 필터
+    if (orgLevel1) {
+      profileQuery = profileQuery.eq("org_level1", orgLevel1);
+    }
+
+    if (orgLevel2) {
+      profileQuery = profileQuery.eq("org_level2", orgLevel2);
+    }
+
+    if (orgLevel3) {
+      profileQuery = profileQuery.eq("org_level3", orgLevel3);
+    }
+
+    if (jobPosition) {
+      profileQuery = profileQuery.eq("job_position", jobPosition);
+    }
+
+    // 하위 호환성 필터
     if (department) {
       profileQuery = profileQuery.eq("department", department);
     }
@@ -164,6 +187,12 @@ export async function GET(request: Request) {
       return {
         id: userData.id,
         name: userData.name,
+        // 새로운 조직 구조 필드
+        orgLevel1: visibility.department !== "private" ? profile.org_level1 : undefined,
+        orgLevel2: visibility.department !== "private" ? profile.org_level2 : undefined,
+        orgLevel3: visibility.department !== "private" ? profile.org_level3 : undefined,
+        jobPosition: visibility.job_role !== "private" ? profile.job_position : undefined,
+        // 하위 호환성 필드
         department: visibility.department !== "private" ? profile.department : undefined,
         jobRole: visibility.job_role !== "private" ? profile.job_role : undefined,
         officeLocation: visibility.office_location !== "private" ? profile.office_location : undefined,

@@ -26,11 +26,18 @@ export const visibilitySettingsSchema = z.object({
 });
 
 export const profileFormSchema = z.object({
-  department: z.string().min(1, "부서를 선택해주세요"),
-  jobRole: z.string().min(1, "직군을 선택해주세요"),
+  // 새로운 조직 구조 필드
+  orgLevel1: z.string().min(1, "연구소/센터/본부를 선택해주세요"),
+  orgLevel2: z.string().optional(),
+  orgLevel3: z.string().optional(),
+  jobPosition: z.string().min(1, "직급을 선택해주세요"),
   officeLocation: z.string().min(1, "근무지를 선택해주세요"),
+  // 하위 호환성 (자동 계산됨)
+  department: z.string().optional(),
+  jobRole: z.string().optional(),
+  // 기본 정보
   mbti: z.string().optional(),
-  hobbies: z.array(z.string()).min(1, "최소 1개의 관심사를 선택해주세요"),
+  hobbies: z.array(z.string()).default([]),
   collaborationStyle: z.string().optional(),
   strengths: z.string().optional(),
   preferredPeopleType: z.string().optional(),

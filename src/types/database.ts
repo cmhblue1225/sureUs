@@ -839,11 +839,15 @@ export type Database = {
           interests: string | null
           is_profile_complete: boolean | null
           job_role: string
+          job_position: string | null
           languages: string | null
           living_location: string | null
           mbti: string | null
           office_location: string
           onboarding_completed: boolean | null
+          org_level1: string | null
+          org_level2: string | null
+          org_level3: string | null
           preferred_people_type: string | null
           role: string | null
           strengths: string | null
@@ -859,19 +863,23 @@ export type Database = {
           certifications?: string | null
           collaboration_style?: string | null
           created_at?: string | null
-          department: string
+          department?: string
           education?: string | null
           favorite_food?: string | null
           hometown?: string | null
           id?: string
           interests?: string | null
           is_profile_complete?: boolean | null
-          job_role: string
+          job_role?: string
+          job_position?: string | null
           languages?: string | null
           living_location?: string | null
           mbti?: string | null
-          office_location: string
+          office_location?: string
           onboarding_completed?: boolean | null
+          org_level1?: string | null
+          org_level2?: string | null
+          org_level3?: string | null
           preferred_people_type?: string | null
           role?: string | null
           strengths?: string | null
@@ -895,11 +903,15 @@ export type Database = {
           interests?: string | null
           is_profile_complete?: boolean | null
           job_role?: string
+          job_position?: string | null
           languages?: string | null
           living_location?: string | null
           mbti?: string | null
           office_location?: string
           onboarding_completed?: boolean | null
+          org_level1?: string | null
+          org_level2?: string | null
+          org_level3?: string | null
           preferred_people_type?: string | null
           role?: string | null
           strengths?: string | null

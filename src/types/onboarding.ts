@@ -10,10 +10,16 @@ export type OnboardingStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export interface OnboardingState {
   currentStep: OnboardingStep;
 
-  // Step 1: 기본 정보 (필수)
-  department: string;
-  jobRole: string;
-  officeLocation: string;
+  // Step 1: 기본 정보 (필수) - 새로운 조직 구조
+  orgLevel1: string;       // 연구소/센터/본부 (필수)
+  orgLevel2: string;       // 실 (선택)
+  orgLevel3: string;       // 팀 (선택)
+  jobPosition: string;     // 직급 (필수)
+  officeLocation: string;  // 근무지 (필수)
+
+  // Legacy 필드 (하위 호환성)
+  department: string;      // 자동 계산됨
+  jobRole: string;         // deprecated
 
   // Step 2: MBTI
   mbti: string;
@@ -46,10 +52,16 @@ export interface OnboardingState {
 export const initialOnboardingState: OnboardingState = {
   currentStep: 0,
 
-  // Step 1
+  // Step 1 - 새로운 조직 구조
+  orgLevel1: "",
+  orgLevel2: "",
+  orgLevel3: "",
+  jobPosition: "",
+  officeLocation: "",
+
+  // Legacy 필드
   department: "",
   jobRole: "",
-  officeLocation: "",
 
   // Step 2
   mbti: "",

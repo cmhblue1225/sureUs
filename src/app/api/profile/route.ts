@@ -47,16 +47,21 @@ export async function POST(request: Request) {
 
     // Determine if all required text fields are filled for is_profile_complete
     const isComplete = !!(
-      data.department &&
-      data.jobRole &&
-      data.officeLocation &&
-      data.hobbies.length > 0
+      data.orgLevel1 &&
+      data.jobPosition &&
+      data.officeLocation
     );
 
     const profileData = {
       user_id: user.id,
-      department: data.department,
-      job_role: data.jobRole,
+      // 새로운 조직 구조 필드
+      org_level1: data.orgLevel1,
+      org_level2: data.orgLevel2 || null,
+      org_level3: data.orgLevel3 || null,
+      job_position: data.jobPosition,
+      // 하위 호환성 필드
+      department: data.department || data.orgLevel1,
+      job_role: data.jobRole || data.jobPosition,
       office_location: data.officeLocation,
       mbti: data.mbti || null,
       collaboration_style: data.collaborationStyle || null,
@@ -212,6 +217,12 @@ export async function POST(request: Request) {
       data: {
         id: profile.id,
         userId: profile.user_id,
+        // 새로운 조직 구조 필드
+        orgLevel1: profile.org_level1,
+        orgLevel2: profile.org_level2,
+        orgLevel3: profile.org_level3,
+        jobPosition: profile.job_position,
+        // 하위 호환성 필드
         department: profile.department,
         jobRole: profile.job_role,
         officeLocation: profile.office_location,
@@ -280,8 +291,14 @@ export async function PUT(request: Request) {
     // Build profile data with snake_case fields directly
     const profileData: ProfileUpdate = {
       user_id: user.id,
-      department: body.department,
-      job_role: body.job_role,
+      // 새로운 조직 구조 필드
+      org_level1: body.org_level1 || null,
+      org_level2: body.org_level2 || null,
+      org_level3: body.org_level3 || null,
+      job_position: body.job_position || null,
+      // 하위 호환성 필드
+      department: body.department || body.org_level1,
+      job_role: body.job_role || body.job_position,
       office_location: body.office_location,
       mbti: body.mbti || null,
       collaboration_style: body.collaboration_style || null,
@@ -298,7 +315,7 @@ export async function PUT(request: Request) {
       career_goals: body.career_goals || null,
       certifications: body.certifications || null,
       languages: body.languages || null,
-      is_profile_complete: !!(body.department && body.job_role && body.office_location),
+      is_profile_complete: !!(body.org_level1 && body.job_position && body.office_location),
     };
 
     // Add onboarding_completed if provided

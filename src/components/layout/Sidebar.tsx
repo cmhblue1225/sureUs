@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -14,10 +15,13 @@ import {
   MessageCircle,
   Settings,
   LogOut,
+  UserPlus,
+  Shield,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useSidebar } from "./SidebarContext";
+import { checkIsAdmin } from "@/lib/utils/auth";
 
 const navigation = [
   { name: "대시보드", href: "/dashboard", icon: LayoutDashboard },
@@ -31,10 +35,24 @@ const navigation = [
   { name: "설정", href: "/settings", icon: Settings },
 ];
 
+const adminNavigation = [
+  { name: "신입사원 관리", href: "/admin/employees", icon: UserPlus },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed } = useSidebar();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkAdmin() {
+      const supabase = createClient();
+      const adminStatus = await checkIsAdmin(supabase);
+      setIsAdmin(adminStatus);
+    }
+    checkAdmin();
+  }, []);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -103,6 +121,56 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Admin Navigation */}
+        {isAdmin && (
+          <>
+            <div
+              className={cn(
+                "mt-4 mb-2 px-3 text-xs font-semibold text-muted-foreground flex items-center gap-2",
+                isCollapsed && "justify-center px-0"
+              )}
+            >
+              <Shield className="w-3 h-3 flex-shrink-0" />
+              <span
+                className={cn(
+                  "transition-all duration-300 ease-in-out overflow-hidden",
+                  isCollapsed ? "w-0 opacity-0" : "opacity-100"
+                )}
+              >
+                관리자 메뉴
+              </span>
+            </div>
+            {adminNavigation.map((item) => {
+              const isActive =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  title={isCollapsed ? item.name : undefined}
+                  className={cn(
+                    "flex items-center text-sm font-medium rounded-md transition-all duration-300 ease-in-out overflow-hidden",
+                    isCollapsed ? "w-10 h-10 justify-center p-0" : "py-2 px-3",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <span
+                    className={cn(
+                      "whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden",
+                      isCollapsed ? "w-0 opacity-0 ml-0" : "w-[150px] opacity-100 ml-3"
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Logout button */}

@@ -19,8 +19,15 @@ import { VisibilitySelector } from "./VisibilitySelector";
 import { AvatarUpload } from "./AvatarUpload";
 import { LLMAssistButton } from "./LLMAssistButton";
 import { TagSuggestButton } from "./TagSuggestButton";
-import { DEPARTMENTS } from "@/lib/constants/departments";
-import { JOB_ROLES } from "@/lib/constants/jobRoles";
+import {
+  ORG_LEVEL1_OPTIONS,
+  getOrgLevel2Options,
+  getOrgLevel3Options,
+  hasLevel2,
+  hasLevel3,
+  getFullOrgPath,
+} from "@/lib/constants/organization";
+import { JOB_POSITIONS } from "@/lib/constants/jobPositions";
 import { OFFICE_LOCATIONS } from "@/lib/constants/locations";
 import { MBTI_TYPES } from "@/lib/constants/mbtiTypes";
 import type { VisibilityLevel, VisibilitySettings } from "@/types/database";
@@ -37,11 +44,22 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
   const [error, setError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentAvatarUrl || null);
 
-  // Form state - 기본 정보
-  const [department, setDepartment] = useState(initialData?.department || "");
-  const [jobRole, setJobRole] = useState(initialData?.jobRole || "");
+  // Form state - 조직 정보 (새로운 구조)
+  const [orgLevel1, setOrgLevel1] = useState(initialData?.orgLevel1 || "");
+  const [orgLevel2, setOrgLevel2] = useState(initialData?.orgLevel2 || "");
+  const [orgLevel3, setOrgLevel3] = useState(initialData?.orgLevel3 || "");
+  const [jobPosition, setJobPosition] = useState(initialData?.jobPosition || "");
   const [officeLocation, setOfficeLocation] = useState(initialData?.officeLocation || "");
   const [mbti, setMbti] = useState(initialData?.mbti || "");
+
+  // Computed department for backward compatibility
+  const department = getFullOrgPath(orgLevel1, orgLevel2, orgLevel3);
+
+  // Level 2/3 options based on parent selection
+  const level2Options = orgLevel1 ? getOrgLevel2Options(orgLevel1) : [];
+  const level3Options = orgLevel1 && orgLevel2 ? getOrgLevel3Options(orgLevel1, orgLevel2) : [];
+  const hasLevel2Options = orgLevel1 ? hasLevel2(orgLevel1) : false;
+  const hasLevel3Options = orgLevel1 && orgLevel2 ? hasLevel3(orgLevel1, orgLevel2) : false;
   const [hobbies, setHobbies] = useState<string[]>(initialData?.hobbies || []);
   const [collaborationStyle, setCollaborationStyle] = useState(initialData?.collaborationStyle || "");
   const [strengths, setStrengths] = useState(initialData?.strengths || "");
@@ -100,9 +118,14 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          department,
-          jobRole,
+          // 새로운 조직 필드
+          orgLevel1,
+          orgLevel2: orgLevel2 || undefined,
+          orgLevel3: orgLevel3 || undefined,
+          jobPosition,
           officeLocation,
+          // 하위 호환성 (자동 계산)
+          department,
           mbti: mbti || undefined,
           hobbies,
           collaborationStyle: collaborationStyle || undefined,
@@ -173,46 +196,111 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
           <CardDescription>필수 정보를 입력해주세요</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Department */}
+          {/* Organization Level 1 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="department">부서 *</Label>
+              <Label htmlFor="orgLevel1">연구소/센터/본부 *</Label>
               <VisibilitySelector
                 value={visibilitySettings.department}
                 onChange={(v) => updateVisibility("department", v)}
               />
             </div>
-            <Select value={department} onValueChange={setDepartment} disabled={loading}>
-              <SelectTrigger id="department">
-                <SelectValue placeholder="부서를 선택하세요" />
+            <Select
+              value={orgLevel1}
+              onValueChange={(value) => {
+                setOrgLevel1(value);
+                setOrgLevel2("");
+                setOrgLevel3("");
+              }}
+              disabled={loading}
+            >
+              <SelectTrigger id="orgLevel1">
+                <SelectValue placeholder="소속을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
-                {DEPARTMENTS.map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
+                {ORG_LEVEL1_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Job Role */}
+          {/* Organization Level 2 (실) */}
+          {hasLevel2Options && (
+            <div className="space-y-2">
+              <Label htmlFor="orgLevel2">실</Label>
+              <Select
+                value={orgLevel2}
+                onValueChange={(value) => {
+                  setOrgLevel2(value);
+                  setOrgLevel3("");
+                }}
+                disabled={loading || !orgLevel1}
+              >
+                <SelectTrigger id="orgLevel2">
+                  <SelectValue placeholder="실을 선택하세요 (선택)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {level2Options.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Organization Level 3 (팀) */}
+          {hasLevel3Options && (
+            <div className="space-y-2">
+              <Label htmlFor="orgLevel3">팀</Label>
+              <Select
+                value={orgLevel3}
+                onValueChange={setOrgLevel3}
+                disabled={loading || !orgLevel2}
+              >
+                <SelectTrigger id="orgLevel3">
+                  <SelectValue placeholder="팀을 선택하세요 (선택)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {level3Options.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Selected Organization Path */}
+          {department && (
+            <div className="px-3 py-2 bg-primary/10 rounded-lg">
+              <p className="text-xs text-muted-foreground">선택된 소속</p>
+              <p className="text-sm font-medium text-primary">{department}</p>
+            </div>
+          )}
+
+          {/* Job Position */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="jobRole">직군 *</Label>
+              <Label htmlFor="jobPosition">직급 *</Label>
               <VisibilitySelector
                 value={visibilitySettings.job_role}
                 onChange={(v) => updateVisibility("job_role", v)}
               />
             </div>
-            <Select value={jobRole} onValueChange={setJobRole} disabled={loading}>
-              <SelectTrigger id="jobRole">
-                <SelectValue placeholder="직군을 선택하세요" />
+            <Select value={jobPosition} onValueChange={setJobPosition} disabled={loading}>
+              <SelectTrigger id="jobPosition">
+                <SelectValue placeholder="직급을 선택하세요" />
               </SelectTrigger>
               <SelectContent>
-                {JOB_ROLES.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
+                {JOB_POSITIONS.map((position) => (
+                  <SelectItem key={position} value={position}>
+                    {position}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -364,7 +452,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
                   fieldType="workDescription"
                   onSuggestion={setWorkDescription}
                   disabled={loading}
-                  additionalContext={{ department, jobRole, techStack }}
+                  additionalContext={{ department, jobPosition, techStack }}
                 />
               </div>
               <VisibilitySelector
@@ -522,7 +610,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
                   fieldType="collaborationStyle"
                   onSuggestion={setCollaborationStyle}
                   disabled={loading}
-                  additionalContext={{ department, jobRole, mbti, workDescription, techStack }}
+                  additionalContext={{ department, jobPosition, mbti, workDescription, techStack }}
                 />
               </div>
               <VisibilitySelector
@@ -549,7 +637,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
                   fieldType="strengths"
                   onSuggestion={setStrengths}
                   disabled={loading}
-                  additionalContext={{ department, jobRole, mbti, workDescription, techStack, collaborationStyle }}
+                  additionalContext={{ department, jobPosition, mbti, workDescription, techStack, collaborationStyle }}
                 />
               </div>
               <VisibilitySelector
@@ -576,7 +664,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
                   fieldType="preferredPeopleType"
                   onSuggestion={setPreferredPeopleType}
                   disabled={loading}
-                  additionalContext={{ department, jobRole, mbti, collaborationStyle, strengths }}
+                  additionalContext={{ department, jobPosition, mbti, collaborationStyle, strengths }}
                 />
               </div>
               <VisibilitySelector
@@ -603,7 +691,7 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
                   fieldType="careerGoals"
                   onSuggestion={setCareerGoals}
                   disabled={loading}
-                  additionalContext={{ department, jobRole, workDescription, techStack, strengths }}
+                  additionalContext={{ department, jobPosition, workDescription, techStack, strengths }}
                 />
               </div>
               <VisibilitySelector

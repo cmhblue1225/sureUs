@@ -26,8 +26,8 @@ function parseEmbedding(embedding: unknown): number[] | undefined {
 
 // 프로필 완성도 계산 함수
 function calculateProfileCompletion(profile: {
-  department?: string | null;
-  job_role?: string | null;
+  org_level1?: string | null;
+  job_position?: string | null;
   office_location?: string | null;
   mbti?: string | null;
   collaboration_style?: string | null;
@@ -39,8 +39,8 @@ function calculateProfileCompletion(profile: {
   missingFields: string[];
 } {
   const fieldLabels: Record<string, string> = {
-    department: "부서",
-    job_role: "직군",
+    org_level1: "소속",
+    job_position: "직급",
     office_location: "근무지",
     hobbies: "취미 태그",
     mbti: "MBTI",
@@ -54,18 +54,18 @@ function calculateProfileCompletion(profile: {
   let score = 0;
 
   // 필수 필드 (각 20점, 총 80점)
-  if (profile?.department) {
+  if (profile?.org_level1) {
     score += 20;
-    completedFields.push(fieldLabels.department);
+    completedFields.push(fieldLabels.org_level1);
   } else {
-    missingFields.push(fieldLabels.department);
+    missingFields.push(fieldLabels.org_level1);
   }
 
-  if (profile?.job_role) {
+  if (profile?.job_position) {
     score += 20;
-    completedFields.push(fieldLabels.job_role);
+    completedFields.push(fieldLabels.job_position);
   } else {
-    missingFields.push(fieldLabels.job_role);
+    missingFields.push(fieldLabels.job_position);
   }
 
   if (profile?.office_location) {
@@ -152,6 +152,12 @@ export async function GET() {
 
     const userName = profile?.users?.name || "사용자";
     const userAvatar = profile?.users?.avatar_url || null;
+    // 새로운 조직 구조 필드
+    const orgLevel1 = profile?.org_level1 || "";
+    const orgLevel2 = profile?.org_level2 || "";
+    const orgLevel3 = profile?.org_level3 || "";
+    const jobPosition = profile?.job_position || "";
+    // 하위 호환성 필드
     const department = profile?.department || "";
     const jobRole = profile?.job_role || "";
     const hasProfile = profile?.is_profile_complete ?? false;
@@ -385,6 +391,12 @@ export async function GET() {
       data: {
         userName,
         userAvatar,
+        // 새로운 조직 구조 필드
+        orgLevel1,
+        orgLevel2,
+        orgLevel3,
+        jobPosition,
+        // 하위 호환성 필드
         department,
         jobRole,
         hasProfile,
