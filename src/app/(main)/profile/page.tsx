@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Edit, User, MapPin, Briefcase, Building, Globe, Users, Lock, Home, GraduationCap, Code, Target, Utensils, Calendar, MessageSquare } from "lucide-react";
-import type { Database, VisibilityLevel } from "@/types/database";
+import type { Database, VisibilityLevel, VisibilitySettings } from "@/types/database";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -65,7 +65,7 @@ export default async function ProfilePage() {
     redirect("/profile/edit");
   }
 
-  const visibility = profile.visibility_settings || {};
+  const visibility = (profile.visibility_settings || {}) as unknown as VisibilitySettings;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

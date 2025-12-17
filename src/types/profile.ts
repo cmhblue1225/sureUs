@@ -51,6 +51,8 @@ export interface UserProfile {
   careerGoals?: string;
   certifications?: string;
   languages?: string;
+  // 역할
+  role: "admin" | "user";
   // 시스템 필드
   visibilitySettings: VisibilitySettings;
   isProfileComplete: boolean;

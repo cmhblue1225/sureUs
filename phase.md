@@ -2,7 +2,143 @@
 
 > 마지막 업데이트: 2025-12-17
 
-## 현재 Phase: 15 완료 (신입사원 온보딩 서비스 피벗)
+## 현재 Phase: 16 완료 (온보딩 서비스 핵심 기능 추가)
+
+---
+
+## Phase 16: 온보딩 서비스 핵심 기능 추가
+**상태: 완료**
+
+### 목표
+신입사원 온보딩 서비스에 필요한 핵심 기능(캘린더, 게시판, 공지사항) 구현
+
+### 16-1. Role 시스템 추가
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| profiles.role 컬럼 추가 | ✅ 완료 | `add_role_column` 마이그레이션 |
+| 타입 정의 업데이트 | ✅ 완료 | `src/types/database.ts`, `src/types/profile.ts` |
+| Auth 헬퍼 함수 | ✅ 완료 | `src/lib/utils/auth.ts` |
+| Profile API role 반환 | ✅ 완료 | `src/app/api/profile/me/route.ts` |
+
+### 16-2. 캘린더 기능
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| calendar_events 테이블 | ✅ 완료 | `create_calendar_tables` 마이그레이션 |
+| 캘린더 목록/생성 API | ✅ 완료 | `src/app/api/calendar/route.ts` |
+| 캘린더 상세/수정/삭제 API | ✅ 완료 | `src/app/api/calendar/[id]/route.ts` |
+| 캘린더 페이지 | ✅ 완료 | `src/app/(main)/calendar/page.tsx` |
+| CalendarView 컴포넌트 | ✅ 완료 | `src/components/calendar/CalendarView.tsx` |
+| EventModal 컴포넌트 | ✅ 완료 | `src/components/calendar/EventModal.tsx` |
+| EventTypeFilter 컴포넌트 | ✅ 완료 | `src/components/calendar/EventTypeFilter.tsx` |
+
+**캘린더 기능 요약**:
+- 공유 일정 (교육): 관리자만 생성/수정/삭제 가능, 모든 사용자에게 표시
+- 개인 일정: 본인만 생성/수정/삭제 및 조회 가능
+- 월간 캘린더 뷰 + 일정 필터링
+
+### 16-3. 게시판 기능
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| board_posts 테이블 | ✅ 완료 | `create_board_tables` 마이그레이션 |
+| board_comments 테이블 | ✅ 완료 | `create_board_tables` 마이그레이션 |
+| board_likes 테이블 | ✅ 완료 | `create_board_tables` 마이그레이션 |
+| board_polls 테이블 | ✅ 완료 | `create_board_tables` 마이그레이션 |
+| board_poll_votes 테이블 | ✅ 완료 | `create_board_tables` 마이그레이션 |
+| board-images 스토리지 버킷 | ✅ 완료 | Supabase MCP |
+| 게시물 목록/작성 API | ✅ 완료 | `src/app/api/board/posts/route.ts` |
+| 게시물 상세/수정/삭제 API | ✅ 완료 | `src/app/api/board/posts/[id]/route.ts` |
+| 좋아요 API | ✅ 완료 | `src/app/api/board/posts/[id]/like/route.ts` |
+| 댓글 API | ✅ 완료 | `src/app/api/board/posts/[id]/comments/route.ts` |
+| 투표 API | ✅ 완료 | `src/app/api/board/posts/[id]/vote/route.ts` |
+| 게시판 목록 페이지 | ✅ 완료 | `src/app/(main)/board/page.tsx` |
+| 게시물 작성 페이지 | ✅ 완료 | `src/app/(main)/board/new/page.tsx` |
+| 게시물 상세 페이지 | ✅ 완료 | `src/app/(main)/board/[id]/page.tsx` |
+
+**게시판 기능 요약**:
+- 게시물 유형: 일반, 갤러리, 투표
+- 좋아요, 댓글 기능
+- 투표 기능 (복수 선택, 마감일 설정)
+- 조회수 자동 증가
+
+### 16-4. 공지사항 기능
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| announcements 테이블 | ✅ 완료 | `create_announcement_tables` 마이그레이션 |
+| announcement_files 테이블 | ✅ 완료 | `create_announcement_tables` 마이그레이션 |
+| announcement_comments 테이블 | ✅ 완료 | `create_announcement_tables` 마이그레이션 |
+| announcement-files 스토리지 버킷 | ✅ 완료 | Supabase MCP (50MB 제한) |
+| 공지 목록/작성 API | ✅ 완료 | `src/app/api/announcements/route.ts` |
+| 공지 상세/수정/삭제 API | ✅ 완료 | `src/app/api/announcements/[id]/route.ts` |
+| 공지 댓글 API | ✅ 완료 | `src/app/api/announcements/[id]/comments/route.ts` |
+| 공지 목록 페이지 | ✅ 완료 | `src/app/(main)/announcements/page.tsx` |
+| 공지 작성 페이지 | ✅ 완료 | `src/app/(main)/announcements/new/page.tsx` |
+| 공지 상세 페이지 | ✅ 완료 | `src/app/(main)/announcements/[id]/page.tsx` |
+
+**공지사항 기능 요약**:
+- 관리자만 공지 작성/수정/삭제 가능
+- 카테고리: 공지, 교육, 이벤트
+- 중요 공지 표시, 상단 고정 기능
+- 파일 첨부 및 다운로드 (최대 50MB)
+- 모든 사용자 댓글 가능
+
+### 16-5. 사이드바 업데이트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 캘린더 메뉴 추가 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+| 게시판 메뉴 추가 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+| 공지사항 메뉴 추가 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+
+### 16-6. 대시보드 API 업데이트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| clubs 관련 코드 제거 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 최근 공지사항 조회 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 다가오는 일정 조회 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 최근 게시물 조회 | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+
+### 적용된 마이그레이션 (5개)
+| 순서 | 마이그레이션명 | 내용 |
+|------|---------------|------|
+| 1 | `add_role_column` | profiles.role 컬럼 추가 |
+| 2 | `create_calendar_tables` | 캘린더 이벤트 테이블 + RLS |
+| 3 | `create_board_tables` | 게시판 테이블들 + 트리거 함수 + RLS |
+| 4 | `create_announcement_tables` | 공지사항 테이블들 + 트리거 함수 + RLS |
+| 5 | `create_view_count_rpc_functions` | 조회수 증가 RPC 함수 |
+
+### 신규 생성 파일 (26개)
+| 카테고리 | 파일 | 용도 |
+|---------|------|------|
+| Auth | `src/lib/utils/auth.ts` | 관리자 권한 체크 헬퍼 |
+| Calendar API | `src/app/api/calendar/route.ts` | 캘린더 목록/생성 |
+| Calendar API | `src/app/api/calendar/[id]/route.ts` | 캘린더 상세/수정/삭제 |
+| Calendar Page | `src/app/(main)/calendar/page.tsx` | 캘린더 페이지 |
+| Calendar Component | `src/components/calendar/CalendarView.tsx` | 월간 캘린더 뷰 |
+| Calendar Component | `src/components/calendar/EventModal.tsx` | 일정 생성/수정 모달 |
+| Calendar Component | `src/components/calendar/EventTypeFilter.tsx` | 일정 유형 필터 |
+| Board API | `src/app/api/board/posts/route.ts` | 게시물 목록/작성 |
+| Board API | `src/app/api/board/posts/[id]/route.ts` | 게시물 상세/수정/삭제 |
+| Board API | `src/app/api/board/posts/[id]/like/route.ts` | 좋아요 토글 |
+| Board API | `src/app/api/board/posts/[id]/comments/route.ts` | 댓글 CRUD |
+| Board API | `src/app/api/board/posts/[id]/vote/route.ts` | 투표 참여 |
+| Board Page | `src/app/(main)/board/page.tsx` | 게시판 목록 |
+| Board Page | `src/app/(main)/board/new/page.tsx` | 게시물 작성 |
+| Board Page | `src/app/(main)/board/[id]/page.tsx` | 게시물 상세 |
+| Announcement API | `src/app/api/announcements/route.ts` | 공지 목록/작성 |
+| Announcement API | `src/app/api/announcements/[id]/route.ts` | 공지 상세/수정/삭제 |
+| Announcement API | `src/app/api/announcements/[id]/comments/route.ts` | 공지 댓글 |
+| Announcement Page | `src/app/(main)/announcements/page.tsx` | 공지 목록 |
+| Announcement Page | `src/app/(main)/announcements/new/page.tsx` | 공지 작성 |
+| Announcement Page | `src/app/(main)/announcements/[id]/page.tsx` | 공지 상세 |
+
+### 수정된 파일
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/types/database.ts` | role 타입, RPC 함수 타입 추가 |
+| `src/types/profile.ts` | role 필드 추가 |
+| `src/app/api/profile/me/route.ts` | role 반환 |
+| `src/components/layout/Sidebar.tsx` | 캘린더, 게시판, 공지사항 메뉴 추가 |
+| `src/app/api/dashboard/route.ts` | clubs 제거, 새 기능 데이터 추가 |
+| `src/app/api/search/users/route.ts` | VisibilitySettings 타입 import |
 
 ---
 
@@ -323,6 +459,7 @@ npx tsx src/scripts/regenerate-embeddings.ts
 | 2025-12-16 | 13 | 온보딩 플로우 구현 (8단계 wizard, Framer Motion 애니메이션) |
 | 2025-12-17 | 14 | 프로젝트 진단 및 개선 (임베딩 88% 복구, 보안 수정, RLS 최적화) |
 | 2025-12-17 | 15 | 신입사원 온보딩 서비스 피벗 (동호회, 추천 기능 삭제) |
+| 2025-12-17 | 16 | 온보딩 서비스 핵심 기능 추가 (캘린더, 게시판, 공지사항, Role 시스템) |
 
 ---
 

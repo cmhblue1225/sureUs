@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateTagOverlap, getCommonTags } from "@/lib/matching/algorithm";
-import type { Database } from "@/types/database";
+import type { Database, VisibilitySettings } from "@/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileWithUser = ProfileRow & { users: { id: string; name: string; email: string; avatar_url: string | null; deleted_at: string | null } };
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
     const users = filteredProfiles.map((profile) => {
       const userData = profile.users as { id: string; name: string; avatar_url: string | null };
       const profileTagList = tagsByProfileId.get(profile.id) || [];
-      const visibility = profile.visibility_settings || {};
+      const visibility = (profile.visibility_settings || {}) as Partial<VisibilitySettings>;
 
       // Calculate similarity if user has tags
       let similarity = undefined;

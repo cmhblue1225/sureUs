@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import type { UserProfile } from "@/types/profile";
-import type { Database } from "@/types/database";
+import type { Database, VisibilitySettings } from "@/types/database";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -45,7 +45,7 @@ export default async function ProfileEditPage() {
         collaborationStyle: profile.collaboration_style || undefined,
         strengths: profile.strengths || undefined,
         preferredPeopleType: profile.preferred_people_type || undefined,
-        visibilitySettings: profile.visibility_settings,
+        visibilitySettings: profile.visibility_settings as unknown as VisibilitySettings | undefined,
       };
     }
   }

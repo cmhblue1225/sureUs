@@ -118,6 +118,7 @@ export async function GET() {
           certifications: "public",
           languages: "public",
         },
+        role: profile?.role || "user",
         isProfileComplete: profile?.is_profile_complete || false,
         preferences: preferences
           ? {
