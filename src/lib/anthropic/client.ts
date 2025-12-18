@@ -13,6 +13,8 @@ function getAnthropicClient(): Anthropic | null {
     return null;
   }
 
+  console.log("ANTHROPIC_API_KEY exists:", process.env.ANTHROPIC_API_KEY?.substring(0, 20) + "...");
+
   if (!anthropicClient) {
     anthropicClient = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
@@ -46,22 +48,39 @@ export async function generateText(
   }
 
   try {
+    console.log("Calling Anthropic API with model: claude-sonnet-4-5-20250929");
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: options.maxTokens || 500,
       temperature: options.temperature ?? 0.7,
       system: options.systemPrompt || DEFAULT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
 
+    console.log("Anthropic API response received:", response.id);
+    console.log("Response content:", JSON.stringify(response.content));
     const content = response.content[0];
     if (content.type === "text") {
+      console.log("Returning text content, length:", content.text.length);
       return content.text;
     }
 
+    console.log("Content type is not text:", content.type);
     return null;
   } catch (error) {
     console.error("Anthropic API error:", error);
+    if (error instanceof Error) {
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+    }
+    // Anthropic SDK specific error handling
+    const anyError = error as { status?: number; error?: { type?: string; message?: string } };
+    if (anyError.status) {
+      console.error("HTTP Status:", anyError.status);
+    }
+    if (anyError.error) {
+      console.error("API Error:", anyError.error);
+    }
     return null;
   }
 }

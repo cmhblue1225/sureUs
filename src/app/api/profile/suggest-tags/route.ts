@@ -7,6 +7,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   suggestHobbyTags,
+  suggestRelatedTags,
   type ProfileContext,
 } from "@/lib/anthropic/profileAssistant";
 import type { Database } from "@/types/database";
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { existingTags = [], count = 5 } = body;
+    const { existingTags = [], selectedTags = [], count = 5 } = body;
 
     // Validate count
     if (typeof count !== "number" || count < 1 || count > 10) {
@@ -39,6 +40,29 @@ export async function POST(request: NextRequest) {
         { success: false, error: "추천 개수는 1-10 사이여야 합니다." },
         { status: 400 }
       );
+    }
+
+    // selectedTags가 있으면 연관 태그 추천 모드
+    if (selectedTags.length > 0) {
+      const result = await suggestRelatedTags(selectedTags, existingTags, count);
+
+      if (!result) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "태그 추천 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.",
+          },
+          { status: 503 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          tags: result.tags,
+          reasoning: result.reasoning,
+        },
+      });
     }
 
     // Get user's current profile for context

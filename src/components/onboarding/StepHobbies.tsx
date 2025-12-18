@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, SkipForward, Heart, Utensils, Plus } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, ArrowRight, SkipForward, Heart, Utensils, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HobbyTag } from "./HobbyTag";
@@ -10,6 +10,7 @@ import { containerVariants, itemVariants, buttonVariants } from "@/lib/animation
 import { DEFAULT_HOBBY_TAGS, type StepProps } from "@/types/onboarding";
 
 const MAX_HOBBIES = 10;
+const SUGGESTION_DEBOUNCE_MS = 800;
 
 export function StepHobbies({
   state,
@@ -19,7 +20,80 @@ export function StepHobbies({
   onSkip,
 }: StepProps) {
   const [customHobby, setCustomHobby] = useState("");
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAnyValue = state.hobbies.size > 0 || state.interests || state.favoriteFood;
+
+  // 선택된 태그 기반으로 추천 태그 요청
+  const fetchSuggestions = useCallback(async (selectedTags: string[]) => {
+    if (selectedTags.length === 0) {
+      setSuggestedTags([]);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await fetch("/api/profile/suggest-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedTags,
+          existingTags: [...DEFAULT_HOBBY_TAGS, ...selectedTags],
+          count: 5,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Tag suggestion failed:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.data?.tags) {
+        // 이미 선택된 태그와 기존 태그 제외
+        const existingSet = new Set([...DEFAULT_HOBBY_TAGS, ...selectedTags]);
+        const newSuggestions = data.data.tags.filter(
+          (tag: string) => !existingSet.has(tag)
+        );
+        setSuggestedTags(newSuggestions);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tag suggestions:", error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, []);
+
+  // 취미 선택 변경 시 debounce로 추천 요청
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    const selectedTags = Array.from(state.hobbies);
+
+    debounceTimerRef.current = setTimeout(() => {
+      fetchSuggestions(selectedTags);
+    }, SUGGESTION_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [state.hobbies, fetchSuggestions]);
+
+  // 추천 태그 클릭 시 선택 목록에 추가
+  const selectSuggestedTag = (tag: string) => {
+    if (state.hobbies.size < MAX_HOBBIES && !state.hobbies.has(tag)) {
+      const newHobbies = new Set(state.hobbies);
+      newHobbies.add(tag);
+      updateState({ hobbies: newHobbies });
+      // 선택된 태그는 추천 목록에서 제거
+      setSuggestedTags((prev) => prev.filter((t) => t !== tag));
+    }
+  };
 
   const toggleHobby = (hobby: string) => {
     const newHobbies = new Set(state.hobbies);
@@ -101,6 +175,42 @@ export function StepHobbies({
                   />
                 </motion.div>
               ))}
+
+              {/* 로딩 인디케이터 */}
+              <AnimatePresence>
+                {isLoadingSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm text-white/60"
+                  >
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>추천 태그 찾는 중...</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* 추천 태그 */}
+              <AnimatePresence>
+                {!isLoadingSuggestions && suggestedTags.map((tag) => (
+                  <motion.div
+                    key={`suggested-${tag}`}
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <HobbyTag
+                      tag={tag}
+                      isSelected={false}
+                      onClick={() => selectSuggestedTag(tag)}
+                      disabled={state.hobbies.size >= MAX_HOBBIES}
+                      isSuggested
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
 

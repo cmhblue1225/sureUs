@@ -104,6 +104,71 @@ JSON 형식으로 응답:
 }
 
 /**
+ * 선택된 태그 기반 연관 태그 추천
+ */
+export async function suggestRelatedTags(
+  selectedTags: string[],
+  excludeTags: string[] = [],
+  count: number = 5
+): Promise<TagSuggestionResult | null> {
+  if (!isAnthropicAvailable()) {
+    return null;
+  }
+
+  if (selectedTags.length === 0) {
+    return null;
+  }
+
+  const prompt = `사용자가 선택한 취미/관심사 태그를 바탕으로 관련된 새로운 태그를 ${count}개 추천해주세요.
+
+선택된 태그: ${selectedTags.join(", ")}
+
+제외할 태그 (이미 목록에 있는 태그): ${excludeTags.length > 0 ? excludeTags.join(", ") : "없음"}
+
+요구사항:
+1. 선택된 태그와 관련성이 높은 취미/관심사 추천
+2. 제외할 태그 목록에 있는 것은 추천하지 않음
+3. 비슷한 카테고리의 구체적인 활동 추천 (예: "운동" 선택 시 → "러닝", "헬스", "수영" 등)
+4. 짧고 명확한 태그 이름 (1-5글자)
+5. 한국어로 작성
+
+JSON 형식으로 응답:
+{
+  "tags": ["태그1", "태그2", "태그3"],
+  "reasoning": "추천 이유를 한 문장으로"
+}`;
+
+  const response = await generateText(prompt, {
+    maxTokens: 500,
+    temperature: 0.8,
+    systemPrompt: "당신은 취미와 관심사 추천 전문가입니다. JSON 형식으로만 응답합니다.",
+  });
+
+  if (!response) {
+    return null;
+  }
+
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]) as TagSuggestionResult;
+      // 제외 태그 필터링
+      const filteredTags = parsed.tags
+        .filter((tag) => !excludeTags.includes(tag) && !selectedTags.includes(tag))
+        .slice(0, count);
+      return {
+        tags: filteredTags,
+        reasoning: parsed.reasoning || "선택한 태그와 관련된 추천입니다.",
+      };
+    }
+  } catch (error) {
+    console.error("Related tag suggestion parsing error:", error);
+  }
+
+  return null;
+}
+
+/**
  * 협업 스타일 작성 도움
  */
 export async function generateCollaborationStyle(
@@ -136,20 +201,26 @@ JSON 형식으로 응답:
 }`;
 
   const response = await generateText(prompt, {
-    maxTokens: 400,
+    maxTokens: 1000,
     temperature: 0.8,
     systemPrompt: "당신은 프로필 작성을 돕는 AI입니다. 자연스럽고 진정성 있는 자기소개를 작성합니다. JSON 형식으로만 응답합니다.",
   });
 
   if (!response) {
+    console.log("generateCollaborationStyle: No response from API");
     return null;
   }
+
+  console.log("generateCollaborationStyle raw response:", response);
 
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as TextGenerationResult;
+      const parsed = JSON.parse(jsonMatch[0]) as TextGenerationResult;
+      console.log("generateCollaborationStyle parsed:", parsed);
+      return parsed;
     }
+    console.log("generateCollaborationStyle: No JSON match found");
   } catch (error) {
     console.error("Text generation parsing error:", error);
   }
@@ -191,7 +262,7 @@ JSON 형식으로 응답:
 }`;
 
   const response = await generateText(prompt, {
-    maxTokens: 400,
+    maxTokens: 1000,
     temperature: 0.8,
     systemPrompt: "당신은 프로필 작성을 돕는 AI입니다. 자연스럽고 진정성 있는 자기소개를 작성합니다. JSON 형식으로만 응답합니다.",
   });
@@ -245,7 +316,7 @@ JSON 형식으로 응답:
 }`;
 
   const response = await generateText(prompt, {
-    maxTokens: 400,
+    maxTokens: 1000,
     temperature: 0.8,
     systemPrompt: "당신은 프로필 작성을 돕는 AI입니다. 자연스럽고 진정성 있는 자기소개를 작성합니다. JSON 형식으로만 응답합니다.",
   });
@@ -297,20 +368,26 @@ JSON 형식으로 응답:
 }`;
 
   const response = await generateText(prompt, {
-    maxTokens: 400,
+    maxTokens: 1000,
     temperature: 0.8,
     systemPrompt: "당신은 프로필 작성을 돕는 AI입니다. 자연스럽고 이해하기 쉬운 업무 소개를 작성합니다. JSON 형식으로만 응답합니다.",
   });
 
   if (!response) {
+    console.log("generateWorkDescription: No response from API");
     return null;
   }
+
+  console.log("generateWorkDescription raw response:", response);
 
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as TextGenerationResult;
+      const parsed = JSON.parse(jsonMatch[0]) as TextGenerationResult;
+      console.log("generateWorkDescription parsed:", parsed);
+      return parsed;
     }
+    console.log("generateWorkDescription: No JSON match found");
   } catch (error) {
     console.error("Text generation parsing error:", error);
   }
@@ -351,7 +428,7 @@ JSON 형식으로 응답:
 }`;
 
   const response = await generateText(prompt, {
-    maxTokens: 400,
+    maxTokens: 1000,
     temperature: 0.8,
     systemPrompt: "당신은 프로필 작성을 돕는 AI입니다. 진정성 있고 영감을 주는 커리어 목표를 작성합니다. JSON 형식으로만 응답합니다.",
   });
