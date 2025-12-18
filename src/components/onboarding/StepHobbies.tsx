@@ -11,6 +11,7 @@ import { DEFAULT_HOBBY_TAGS, type StepProps } from "@/types/onboarding";
 
 const MAX_HOBBIES = 10;
 const SUGGESTION_DEBOUNCE_MS = 800;
+const MAX_SUGGESTED_TAGS = 15;
 
 export function StepHobbies({
   state,
@@ -25,10 +26,9 @@ export function StepHobbies({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAnyValue = state.hobbies.size > 0 || state.interests || state.favoriteFood;
 
-  // 선택된 태그 기반으로 추천 태그 요청
+  // 선택된 태그 기반으로 추천 태그 요청 (누적 방식)
   const fetchSuggestions = useCallback(async (selectedTags: string[]) => {
     if (selectedTags.length === 0) {
-      setSuggestedTags([]);
       return;
     }
 
@@ -51,12 +51,16 @@ export function StepHobbies({
 
       const data = await response.json();
       if (data.success && data.data?.tags) {
-        // 이미 선택된 태그와 기존 태그 제외
-        const existingSet = new Set([...DEFAULT_HOBBY_TAGS, ...selectedTags]);
-        const newSuggestions = data.data.tags.filter(
-          (tag: string) => !existingSet.has(tag)
-        );
-        setSuggestedTags(newSuggestions);
+        setSuggestedTags((prev) => {
+          // 기존 추천 태그 + 새로운 태그 (중복 제외)
+          const existingSet = new Set([...DEFAULT_HOBBY_TAGS, ...prev]);
+          const newTags = data.data.tags.filter(
+            (tag: string) => !existingSet.has(tag)
+          );
+          const combined = [...prev, ...newTags];
+          // 최대 개수 제한
+          return combined.slice(0, MAX_SUGGESTED_TAGS);
+        });
       }
     } catch (error) {
       console.error("Failed to fetch tag suggestions:", error);
@@ -84,15 +88,17 @@ export function StepHobbies({
     };
   }, [state.hobbies, fetchSuggestions]);
 
-  // 추천 태그 클릭 시 선택 목록에 추가
-  const selectSuggestedTag = (tag: string) => {
-    if (state.hobbies.size < MAX_HOBBIES && !state.hobbies.has(tag)) {
-      const newHobbies = new Set(state.hobbies);
+  // 추천 태그 클릭 시 선택/해제 토글
+  const toggleSuggestedTag = (tag: string) => {
+    const newHobbies = new Set(state.hobbies);
+    if (newHobbies.has(tag)) {
+      // 이미 선택된 경우 해제
+      newHobbies.delete(tag);
+    } else if (newHobbies.size < MAX_HOBBIES) {
+      // 선택되지 않은 경우 추가
       newHobbies.add(tag);
-      updateState({ hobbies: newHobbies });
-      // 선택된 태그는 추천 목록에서 제거
-      setSuggestedTags((prev) => prev.filter((t) => t !== tag));
     }
+    updateState({ hobbies: newHobbies });
   };
 
   const toggleHobby = (hobby: string) => {
@@ -191,9 +197,9 @@ export function StepHobbies({
                 )}
               </AnimatePresence>
 
-              {/* 추천 태그 */}
+              {/* 추천 태그 (누적됨) */}
               <AnimatePresence>
-                {!isLoadingSuggestions && suggestedTags.map((tag) => (
+                {suggestedTags.map((tag) => (
                   <motion.div
                     key={`suggested-${tag}`}
                     initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -203,10 +209,10 @@ export function StepHobbies({
                   >
                     <HobbyTag
                       tag={tag}
-                      isSelected={false}
-                      onClick={() => selectSuggestedTag(tag)}
-                      disabled={state.hobbies.size >= MAX_HOBBIES}
-                      isSuggested
+                      isSelected={state.hobbies.has(tag)}
+                      onClick={() => toggleSuggestedTag(tag)}
+                      disabled={state.hobbies.size >= MAX_HOBBIES && !state.hobbies.has(tag)}
+                      isSuggested={!state.hobbies.has(tag)}
                     />
                   </motion.div>
                 ))}

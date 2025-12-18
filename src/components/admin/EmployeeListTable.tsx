@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ChevronLeft, ChevronRight, Users, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Users, Pencil, Trash2, Download } from "lucide-react";
 import { ORG_LEVEL1_OPTIONS } from "@/lib/constants/organization";
 import { EmployeeEditDialog } from "./EmployeeEditDialog";
 import { EmployeeDeleteDialog } from "./EmployeeDeleteDialog";
@@ -42,6 +42,7 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
   const [deletingEmployee, setDeletingEmployee] = useState<EmployeeListItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +103,49 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
     fetchEmployees();
   };
 
+  const handleDownloadExcel = async () => {
+    setIsDownloading(true);
+    try {
+      const params = new URLSearchParams();
+      if (orgLevel1Filter && orgLevel1Filter !== "all") {
+        params.append("orgLevel1", orgLevel1Filter);
+      }
+
+      const response = await fetch(`/api/admin/employees/excel?${params}`);
+
+      if (!response.ok) {
+        throw new Error("다운로드에 실패했습니다.");
+      }
+
+      // Blob으로 변환 후 다운로드
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Content-Disposition 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let fileName = "신입사원목록.xlsx";
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (fileNameMatch) {
+          fileName = decodeURIComponent(fileNameMatch[1]);
+        }
+      }
+
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Excel download failed:", error);
+      alert("엑셀 다운로드에 실패했습니다.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -111,20 +155,37 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
             등록된 직원 ({total}명)
           </CardTitle>
 
-          {/* 필터 */}
-          <Select value={orgLevel1Filter} onValueChange={setOrgLevel1Filter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="부서 필터" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체</SelectItem>
-              {ORG_LEVEL1_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {opt}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* 필터 및 다운로드 */}
+          <div className="flex items-center gap-2">
+            <Select value={orgLevel1Filter} onValueChange={setOrgLevel1Filter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="부서 필터" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                {ORG_LEVEL1_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadExcel}
+              disabled={isDownloading || total === 0}
+              className="flex items-center gap-2"
+            >
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              엑셀 다운로드
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
