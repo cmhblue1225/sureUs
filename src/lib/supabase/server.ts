@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 
@@ -29,17 +30,15 @@ export async function createClient() {
   );
 }
 
+/**
+ * Service Client - RLS를 우회하여 관리자 작업 수행
+ * @supabase/supabase-js의 createClient를 사용하여 RLS 완전 우회
+ */
 export function createServiceClient() {
-  return createServerClient<Database>(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return [];
-        },
-        setAll() {},
-      },
       auth: {
         autoRefreshToken: false,
         persistSession: false,

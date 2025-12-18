@@ -17,6 +17,7 @@ import {
   LogOut,
   UserPlus,
   Shield,
+  Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -36,6 +37,7 @@ const navigation = [
 ];
 
 const adminNavigation = [
+  { name: "기수 관리", href: "/admin/cohorts", icon: Users },
   { name: "신입사원 관리", href: "/admin/employees", icon: UserPlus },
 ];
 

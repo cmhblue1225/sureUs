@@ -11,6 +11,7 @@ import {
   filterEdgesBySimilarity,
   type ClusteringResult,
 } from "@/lib/graph/clustering";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
@@ -78,6 +79,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     // Get current user's profile
     const { data: userProfile } = await supabase
       .from("profiles")
@@ -121,7 +133,7 @@ export async function GET(request: Request) {
       preferredPeopleTypeEmbedding: parseEmbedding(userEmbedding?.preferred_people_type_embedding),
     };
 
-    // Get all other profiles using service client
+    // Get all other profiles using service client - filter by cohort_id
     const serviceClient = createServiceClient();
 
     const { data: otherProfiles } = await serviceClient
@@ -130,8 +142,10 @@ export async function GET(request: Request) {
         *,
         users!inner(id, name, avatar_url, deleted_at)
       `)
+      .eq("cohort_id", cohortId)
       .eq("is_profile_complete", true)
       .neq("user_id", user.id)
+      .neq("role", "admin")
       .is("users.deleted_at", null)
       .limit(maxNodes);
 

@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -37,7 +37,25 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      // 로그인 성공 후 user 정보로 역할 및 온보딩 상태 확인
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, onboarding_completed")
+          .eq("user_id", data.user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          router.push("/admin/cohorts");
+        } else if (!profile?.onboarding_completed) {
+          // 온보딩 미완료 사용자는 온보딩 페이지로 리다이렉트
+          router.push("/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        router.push("/onboarding");
+      }
       router.refresh();
     } catch {
       setError("로그인 중 오류가 발생했습니다.");
@@ -51,7 +69,7 @@ export default function LoginPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">sureUs</CardTitle>
         <CardDescription className="text-center">
-          사내 네트워킹 서비스에 로그인하세요
+          신입사원 온보딩 서비스에 로그인하세요
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleLogin}>
@@ -74,7 +92,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">비밀번호</Label>
+            <Label htmlFor="password">비밀번호 (초기 비밀번호 : suresoft1!)</Label>
             <Input
               id="password"
               type="password"
@@ -90,12 +108,6 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "로그인 중..." : "로그인"}
           </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            계정이 없으신가요?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
-              회원가입
-            </Link>
-          </p>
         </CardFooter>
       </form>
     </Card>

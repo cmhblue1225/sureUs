@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveCohortId, isUserAdmin, isSameCohort } from "@/lib/utils/cohort";
 
 // GET /api/conversations - Get user's conversations
 export async function GET() {
@@ -14,11 +15,23 @@ export async function GET() {
       );
     }
 
-    // Get conversations where user is participant
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
+    // Get conversations where user is participant and in the same cohort
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: conversations, error } = await (supabase
       .from("conversations")
       .select("*")
+      .eq("cohort_id", cohortId)
       .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
       .order("last_message_at", { ascending: false, nullsFirst: false }) as any);
 
@@ -123,6 +136,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // 같은 기수인지 확인
+    const sameCoho = await isSameCohort(supabase, user.id, otherUserId);
+    if (!sameCoho) {
+      return NextResponse.json(
+        { success: false, error: "같은 기수의 사용자에게만 메시지를 보낼 수 있습니다." },
+        { status: 400 }
+      );
+    }
+
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     // Check if conversation already exists
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existingConv } = await (supabase
@@ -149,6 +182,7 @@ export async function POST(request: Request) {
       .insert({
         participant_1: p1,
         participant_2: p2,
+        cohort_id: cohortId,
       })
       .select("id")
       .single();

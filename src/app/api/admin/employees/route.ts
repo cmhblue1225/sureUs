@@ -6,13 +6,14 @@ import {
   generateInitialPassword,
   formatPhoneNumber,
 } from "@/lib/utils/csv";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 import type {
   NewEmployeeData,
   BulkRegistrationResult,
   EmployeeListItem,
 } from "@/types/employee";
 
-const MAX_EMPLOYEES_PER_REQUEST = 30;
+const MAX_EMPLOYEES_PER_REQUEST = 200;
 
 /**
  * GET /api/admin/employees - 등록된 신입사원 목록 조회
@@ -20,7 +21,27 @@ const MAX_EMPLOYEES_PER_REQUEST = 30;
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "인증이 필요합니다." },
+        { status: 401 }
+      );
+    }
+
     await requireAdmin(supabase);
+
+    // 현재 관리자가 선택한 기수 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -30,7 +51,7 @@ export async function GET(request: Request) {
 
     const serviceClient = createServiceClient();
 
-    // 사번이 있는 사용자 조회 (신입사원으로 등록된 사용자)
+    // 사번이 있는 사용자 조회 (신입사원으로 등록된 사용자) - 선택된 기수만
     let query = serviceClient
       .from("users")
       .select(
@@ -43,11 +64,12 @@ export async function GET(request: Request) {
         birthdate,
         gender,
         created_at,
-        profiles!inner(org_level1, org_level2, org_level3)
+        profiles!inner(org_level1, org_level2, org_level3, cohort_id)
       `,
         { count: "exact" }
       )
       .not("employee_id", "is", null)
+      .eq("profiles.cohort_id", cohortId)
       .order("created_at", { ascending: false });
 
     if (orgLevel1Filter) {
@@ -104,7 +126,27 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "인증이 필요합니다." },
+        { status: 401 }
+      );
+    }
+
     await requireAdmin(supabase);
+
+    // 현재 관리자가 선택한 기수 가져오기 (신입사원이 이 기수로 배정됨)
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다. 신입사원을 등록하려면 먼저 기수를 선택해주세요." },
+        { status: 400 }
+      );
+    }
 
     const { employees } = (await request.json()) as {
       employees: NewEmployeeData[];
@@ -179,23 +221,45 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // 사번 자동 생성
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: employeeIdResult, error: employeeIdError } =
-          await (serviceClient.rpc as any)("generate_employee_id");
+        // 사번 처리: 수동 입력이 있으면 사용, 없으면 자동 생성
+        let employeeId: string;
 
-        if (employeeIdError || !employeeIdResult) {
-          results.push({
-            success: false,
-            email: emp.email,
-            name: emp.name,
-            error: "사번 생성에 실패했습니다.",
-          });
-          continue;
+        if (emp.employeeId && emp.employeeId.trim()) {
+          // 수동 입력 사번 - 중복 체크 필요
+          const { data: existingEmployeeId } = await serviceClient
+            .from("users")
+            .select("id")
+            .eq("employee_id", emp.employeeId.trim())
+            .single();
+
+          if (existingEmployeeId) {
+            results.push({
+              success: false,
+              email: emp.email,
+              name: emp.name,
+              error: `사번 ${emp.employeeId}이(가) 이미 존재합니다.`,
+            });
+            continue;
+          }
+          employeeId = emp.employeeId.trim();
+        } else {
+          // 자동 생성
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: employeeIdResult, error: employeeIdError } =
+            await (serviceClient.rpc as any)("generate_employee_id");
+
+          if (employeeIdError || !employeeIdResult) {
+            results.push({
+              success: false,
+              email: emp.email,
+              name: emp.name,
+              error: "사번 생성에 실패했습니다.",
+            });
+            continue;
+          }
+          employeeId = employeeIdResult as string;
         }
-
-        const employeeId = employeeIdResult as string;
-        const initialPassword = generateInitialPassword(emp.birthdate);
+        const initialPassword = generateInitialPassword();
 
         // Supabase Auth로 사용자 생성
         const { data: authData, error: authError } =
@@ -244,7 +308,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // profiles 테이블에 초기 레코드 생성
+        // profiles 테이블에 초기 레코드 생성 (관리자가 선택한 기수로 배정)
         const { error: profileError } = await serviceClient
           .from("profiles")
           .insert({
@@ -253,12 +317,25 @@ export async function POST(request: Request) {
             org_level2: emp.orgLevel2 || null,
             org_level3: emp.orgLevel3 || null,
             department: emp.orgLevel1, // 하위 호환성
+            job_role: "신입사원", // NOT NULL 필드 - 기본값
+            office_location: "본사", // NOT NULL 필드 - 기본값
+            cohort_id: cohortId, // 관리자가 선택한 기수로 배정
             is_profile_complete: false,
+            onboarding_completed: false,
           });
 
         if (profileError) {
           console.error("Profile creation error:", profileError);
-          // 프로필 생성 실패는 경고만 기록 (사용자 계정은 유지)
+          // 프로필 생성 실패 시 사용자 계정도 롤백
+          await serviceClient.from("users").delete().eq("id", userId);
+          await serviceClient.auth.admin.deleteUser(userId);
+          results.push({
+            success: false,
+            email: emp.email,
+            name: emp.name,
+            error: "프로필 생성에 실패했습니다: " + profileError.message,
+          });
+          continue;
         }
 
         results.push({

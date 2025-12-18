@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/utils/auth";
-import { parseEmployeeCSV, generateCSVTemplate } from "@/lib/utils/csv";
+import { parseEmployeeCSV } from "@/lib/utils/csv";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 /**
  * POST /api/admin/employees/csv - CSV 파일 파싱
@@ -59,12 +61,17 @@ export async function GET() {
     const supabase = await createClient();
     await requireAdmin(supabase);
 
-    const template = generateCSVTemplate();
+    // 정적 템플릿 파일 읽기
+    const templatePath = join(process.cwd(), "신입사원_템플릿.csv");
+    const template = readFileSync(templatePath, "utf-8");
+
+    // 한글 파일명을 위한 인코딩
+    const encodedFilename = encodeURIComponent("신입사원_템플릿.csv");
 
     return new NextResponse(template, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="employee_template.csv"',
+        "Content-Disposition": `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
       },
     });
   } catch (error) {

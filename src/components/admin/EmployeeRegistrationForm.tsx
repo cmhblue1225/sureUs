@@ -25,6 +25,7 @@ import {
   hasLevel2,
   hasLevel3,
 } from "@/lib/constants/organization";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import type { NewEmployeeData, BulkRegistrationResult } from "@/types/employee";
 
@@ -33,6 +34,7 @@ const MAX_EMPLOYEES = 30;
 
 interface EmployeeRow extends NewEmployeeData {
   id: string;
+  autoGenerateId: boolean;  // 사번 자동 생성 여부
 }
 
 interface EmployeeRegistrationFormProps {
@@ -60,6 +62,8 @@ export function EmployeeRegistrationForm({
       birthdate: "",
       address: "",
       gender: undefined,
+      employeeId: "",
+      autoGenerateId: true,  // 기본값: 자동 생성
     };
   }
 
@@ -75,7 +79,7 @@ export function EmployeeRegistrationForm({
     }
   }
 
-  function updateEmployee(id: string, field: keyof EmployeeRow, value: string) {
+  function updateEmployee(id: string, field: keyof EmployeeRow, value: string | boolean) {
     setEmployees(
       employees.map((e) => {
         if (e.id !== id) return e;
@@ -83,7 +87,7 @@ export function EmployeeRegistrationForm({
         const updated = { ...e, [field]: value };
 
         // 이메일 자동 완성
-        if (field === "email" && value && !value.includes("@")) {
+        if (field === "email" && typeof value === "string" && value && !value.includes("@")) {
           updated.email = value + COMPANY_EMAIL_DOMAIN;
         }
 
@@ -96,6 +100,11 @@ export function EmployeeRegistrationForm({
         // Level 2 변경 시 Level 3 초기화
         if (field === "orgLevel2") {
           updated.orgLevel3 = "";
+        }
+
+        // 자동 생성 체크 시 사번 입력값 초기화
+        if (field === "autoGenerateId" && value === true) {
+          updated.employeeId = "";
         }
 
         return updated;
@@ -131,7 +140,11 @@ export function EmployeeRegistrationForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employees: employees.map(({ id, ...rest }) => rest),
+          employees: employees.map(({ id, autoGenerateId, ...rest }) => ({
+            ...rest,
+            // 자동 생성이면 employeeId를 undefined로 전송
+            employeeId: autoGenerateId ? undefined : rest.employeeId || undefined,
+          })),
         }),
       });
 
@@ -251,6 +264,39 @@ export function EmployeeRegistrationForm({
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* 0행: 사번 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>사번</Label>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`autoId-${emp.id}`}
+                            checked={emp.autoGenerateId}
+                            onCheckedChange={(checked) =>
+                              updateEmployee(emp.id, "autoGenerateId", checked as boolean)
+                            }
+                          />
+                          <Label
+                            htmlFor={`autoId-${emp.id}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            자동 생성
+                          </Label>
+                        </div>
+                      </div>
+                      <Input
+                        value={emp.employeeId || ""}
+                        onChange={(e) =>
+                          updateEmployee(emp.id, "employeeId", e.target.value)
+                        }
+                        placeholder={emp.autoGenerateId ? "자동 생성됨" : "예: 2025001"}
+                        disabled={emp.autoGenerateId}
+                        className={emp.autoGenerateId ? "bg-muted" : ""}
+                      />
+                    </div>
+                  </div>
+
                   {/* 1행: 이름, 이메일 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -371,7 +417,7 @@ export function EmployeeRegistrationForm({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>생년월일 (초기 비밀번호)</Label>
+                      <Label>생년월일</Label>
                       <Input
                         type="date"
                         value={emp.birthdate || ""}

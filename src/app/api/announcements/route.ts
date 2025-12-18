@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkIsAdmin } from "@/lib/utils/auth";
+import { getEffectiveCohortId, getUserCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 // GET /api/announcements - 공지 목록
 export async function GET(request: NextRequest) {
@@ -25,6 +26,17 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     let query = supabase
       .from("announcements")
       .select(
@@ -35,6 +47,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" }
       )
+      .eq("cohort_id", cohortId)
       .order("is_pinned", { ascending: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -107,6 +120,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 현재 사용자의 기수 ID 가져오기
+    const cohortId = await getEffectiveCohortId(supabase, user.id, true);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     // 공지 생성
     const { data: announcement, error } = await supabase
       .from("announcements")
@@ -117,6 +140,7 @@ export async function POST(request: NextRequest) {
         category: category || "notice",
         is_important: isImportant || false,
         is_pinned: isPinned || false,
+        cohort_id: cohortId,
       })
       .select()
       .single();

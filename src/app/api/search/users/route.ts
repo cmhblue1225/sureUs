@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateTagOverlap, getCommonTags } from "@/lib/matching/algorithm";
 import type { Database, VisibilitySettings } from "@/types/database";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileWithUser = ProfileRow & { users: { id: string; name: string; email: string; avatar_url: string | null; deleted_at: string | null } };
@@ -34,6 +35,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     // Get current user's profile and tags for similarity calculation
     const { data: userProfile } = await supabase
       .from("profiles")
@@ -50,13 +62,14 @@ export async function GET(request: Request) {
       userTags = tags?.map((t: { tag_name: string }) => t.tag_name) || [];
     }
 
-    // Build query for profiles
+    // Build query for profiles - filter by cohort_id
     let profileQuery = supabase
       .from("profiles")
       .select(`
         *,
         users!inner(id, name, email, avatar_url, deleted_at)
       `, { count: "exact" })
+      .eq("cohort_id", cohortId)
       .eq("is_profile_complete", true)
       .is("users.deleted_at", null)
       .neq("user_id", user.id);

@@ -75,6 +75,8 @@ export async function GET() {
         email: user.email,
         name: userData?.name || user.user_metadata?.name || "",
         avatarUrl: userData?.avatar_url || null,
+        // 기수 정보
+        cohortId: profile?.cohort_id || null,
         // 새로운 조직 구조 필드
         orgLevel1: profile?.org_level1 || "",
         orgLevel2: profile?.org_level2 || "",

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Check } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -14,6 +14,62 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // 비밀번호 변경 상태
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // 비밀번호 변경 핸들러
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    // 유효성 검사
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("모든 필드를 입력해주세요.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("새 비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setPasswordError(data.error);
+        return;
+      }
+
+      setPasswordSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setPasswordError("비밀번호 변경 중 오류가 발생했습니다.");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (confirmPhrase !== "DELETE MY ACCOUNT") {
@@ -70,6 +126,75 @@ export default function SettingsPage() {
           </p>
           <Button variant="outline" onClick={() => router.push("/profile/edit")}>
             프로필 편집
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Password Change */}
+      <Card>
+        <CardHeader>
+          <CardTitle>비밀번호 변경</CardTitle>
+          <CardDescription>
+            계정 보안을 위해 주기적으로 비밀번호를 변경해주세요
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="currentPassword">현재 비밀번호</Label>
+            <Input
+              id="currentPassword"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="현재 비밀번호"
+              disabled={changingPassword}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">새 비밀번호</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="8자 이상"
+              disabled={changingPassword}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">새 비밀번호 확인</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="새 비밀번호 다시 입력"
+              disabled={changingPassword}
+            />
+          </div>
+
+          {passwordError && (
+            <p className="text-sm text-destructive">{passwordError}</p>
+          )}
+          {passwordSuccess && (
+            <p className="text-sm text-green-600 flex items-center gap-1">
+              <Check className="h-4 w-4" />
+              비밀번호가 변경되었습니다.
+            </p>
+          )}
+
+          <Button
+            onClick={handleChangePassword}
+            disabled={changingPassword}
+          >
+            {changingPassword ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                변경 중...
+              </>
+            ) : (
+              "비밀번호 변경"
+            )}
           </Button>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkIsAdmin } from "@/lib/utils/auth";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 // GET /api/calendar - 일정 목록 조회
 export async function GET(request: NextRequest) {
@@ -23,6 +24,19 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const eventType = searchParams.get("eventType"); // training | personal | all
 
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
+    // training 이벤트: 기수 필터
+    // personal 이벤트: 본인 것만
     let query = supabase
       .from("calendar_events")
       .select(
@@ -42,8 +56,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 이벤트 타입 필터
-    if (eventType && eventType !== "all") {
-      query = query.eq("event_type", eventType);
+    if (eventType === "training") {
+      query = query.eq("event_type", "training").eq("cohort_id", cohortId);
+    } else if (eventType === "personal") {
+      query = query.eq("event_type", "personal").eq("user_id", user.id);
+    } else {
+      // all: training은 기수별, personal은 본인 것만
+      query = query.or(
+        `and(event_type.eq.training,cohort_id.eq.${cohortId}),and(event_type.eq.personal,user_id.eq.${user.id})`
+      );
     }
 
     const { data: events, error } = await query;
@@ -106,14 +127,22 @@ export async function POST(request: NextRequest) {
     }
 
     // training 이벤트는 admin만 생성 가능
-    if (eventType === "training") {
-      const isAdmin = await checkIsAdmin(supabase);
-      if (!isAdmin) {
-        return NextResponse.json(
-          { success: false, error: "교육 일정은 관리자만 생성할 수 있습니다." },
-          { status: 403 }
-        );
-      }
+    const isAdmin = await checkIsAdmin(supabase);
+    if (eventType === "training" && !isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "교육 일정은 관리자만 생성할 수 있습니다." },
+        { status: 403 }
+      );
+    }
+
+    // 현재 사용자의 기수 ID 가져오기
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
     }
 
     const { data: event, error } = await supabase
@@ -129,6 +158,7 @@ export async function POST(request: NextRequest) {
         created_by: user.id,
         location: location || null,
         color: color || "#3B82F6",
+        cohort_id: cohortId,
       })
       .select()
       .single();

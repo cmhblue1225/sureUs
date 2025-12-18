@@ -18,8 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Users, Pencil, Trash2 } from "lucide-react";
 import { ORG_LEVEL1_OPTIONS } from "@/lib/constants/organization";
+import { EmployeeEditDialog } from "./EmployeeEditDialog";
+import { EmployeeDeleteDialog } from "./EmployeeDeleteDialog";
 import type { EmployeeListItem, EmployeeListResponse } from "@/types/employee";
 
 interface EmployeeListTableProps {
@@ -32,8 +34,14 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [orgLevel1Filter, setOrgLevel1Filter] = useState<string>("");
+  const [orgLevel1Filter, setOrgLevel1Filter] = useState<string>("all");
   const limit = 20;
+
+  // Dialog states
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeListItem | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<EmployeeListItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
@@ -43,7 +51,7 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
         limit: String(limit),
       });
 
-      if (orgLevel1Filter) {
+      if (orgLevel1Filter && orgLevel1Filter !== "all") {
         params.append("orgLevel1", orgLevel1Filter);
       }
 
@@ -80,6 +88,20 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
     });
   }
 
+  const handleEditClick = (employee: EmployeeListItem) => {
+    setEditingEmployee(employee);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (employee: EmployeeListItem) => {
+    setDeletingEmployee(employee);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDialogSuccess = () => {
+    fetchEmployees();
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -95,7 +117,7 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
               <SelectValue placeholder="부서 필터" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체</SelectItem>
+              <SelectItem value="all">전체</SelectItem>
               {ORG_LEVEL1_OPTIONS.map((opt) => (
                 <SelectItem key={opt} value={opt}>
                   {opt}
@@ -128,6 +150,7 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
                     <TableHead>부서</TableHead>
                     <TableHead>전화번호</TableHead>
                     <TableHead>등록일</TableHead>
+                    <TableHead className="w-24 text-center">관리</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,6 +174,28 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDate(emp.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEditClick(emp)}
+                            title="수정"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteClick(emp)}
+                            title="삭제"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -186,6 +231,22 @@ export function EmployeeListTable({ refreshTrigger }: EmployeeListTableProps) {
           </>
         )}
       </CardContent>
+
+      {/* Edit Dialog */}
+      <EmployeeEditDialog
+        employee={editingEmployee}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={handleDialogSuccess}
+      />
+
+      {/* Delete Dialog */}
+      <EmployeeDeleteDialog
+        employee={deletingEmployee}
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onSuccess={handleDialogSuccess}
+      />
     </Card>
   );
 }

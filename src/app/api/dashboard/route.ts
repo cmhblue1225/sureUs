@@ -6,6 +6,7 @@ import {
   DEFAULT_ENHANCED_WEIGHTS,
 } from "@/lib/matching/enhancedAlgorithm";
 import type { Database } from "@/types/database";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
 
@@ -133,6 +134,17 @@ export async function GET() {
 
     const serviceClient = createServiceClient();
 
+    // 현재 사용자의 기수 ID 가져오기
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
     // 사용자 프로필 조회
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile } = await (serviceClient
@@ -179,17 +191,19 @@ export async function GET() {
         .eq("user_id", user.id)
         .eq("read", false),
 
-      // 추천 동료 수 (전체 활성 프로필 수 - 본인)
+      // 추천 동료 수 (같은 기수의 활성 프로필 수 - 본인)
       serviceClient
         .from("profiles")
         .select("id", { count: "exact", head: true })
+        .eq("cohort_id", cohortId)
         .eq("is_profile_complete", true)
         .neq("user_id", user.id),
 
-      // 추천 동료 후보 (enhanced algorithm용 전체 데이터)
+      // 추천 동료 후보 (같은 기수의 enhanced algorithm용 전체 데이터)
       serviceClient
         .from("profiles")
         .select("id, user_id, department, job_role, office_location, mbti, users!inner(id, name, avatar_url, deleted_at)")
+        .eq("cohort_id", cohortId)
         .eq("is_profile_complete", true)
         .neq("user_id", user.id)
         .is("users.deleted_at", null)
@@ -202,7 +216,7 @@ export async function GET() {
         .eq("user_id", user.id)
         .single(),
 
-      // 최근 공지사항
+      // 최근 공지사항 (같은 기수)
       serviceClient
         .from("announcements")
         .select(`
@@ -214,20 +228,22 @@ export async function GET() {
           created_at,
           author:users!announcements_user_id_fkey(name, avatar_url)
         `)
+        .eq("cohort_id", cohortId)
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(5),
 
-      // 다가오는 일정 (오늘 이후)
+      // 다가오는 일정 (오늘 이후, 같은 기수)
       serviceClient
         .from("calendar_events")
         .select("*")
+        .eq("cohort_id", cohortId)
         .or(`event_type.eq.training,and(event_type.eq.personal,user_id.eq.${user.id})`)
         .gte("start_date", new Date().toISOString())
         .order("start_date", { ascending: true })
         .limit(5),
 
-      // 최근 게시판 게시물
+      // 최근 게시판 게시물 (같은 기수)
       serviceClient
         .from("board_posts")
         .select(`
@@ -239,6 +255,7 @@ export async function GET() {
           created_at,
           author:users!board_posts_user_id_fkey(name, avatar_url)
         `)
+        .eq("cohort_id", cohortId)
         .order("created_at", { ascending: false })
         .limit(5),
     ]);

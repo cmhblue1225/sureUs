@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { Database, VisibilityLevel } from "@/types/database";
+import { isSameCohort, isUserAdmin } from "@/lib/utils/cohort";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -79,6 +80,21 @@ export async function GET(
       );
     }
 
+    // 같은 기수인지 확인 (관리자가 아니면 같은 기수 사용자의 프로필만 볼 수 있음)
+    const isOwnProfile = currentUser.id === targetUserId;
+    if (!isOwnProfile) {
+      const isAdmin = await isUserAdmin(supabase, currentUser.id);
+      if (!isAdmin) {
+        const sameCohort = await isSameCohort(supabase, currentUser.id, targetUserId);
+        if (!sameCohort) {
+          return NextResponse.json(
+            { success: false, error: "같은 기수의 사용자 프로필만 볼 수 있습니다." },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // Get hobbies/tags
     const { data: tags } = await supabase
       .from("profile_tags")
@@ -95,7 +111,6 @@ export async function GET(
       .single<{ department: string }>();
 
     const isSameDepartment = currentUserProfile?.department === profile.department;
-    const isOwnProfile = currentUser.id === targetUserId;
 
     // Helper to check if field should be visible
     const visibility = (profile.visibility_settings as VisibilitySettings) || {};

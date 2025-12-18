@@ -12,6 +12,7 @@ export interface NewEmployeeData {
   birthdate?: string;         // 생년월일 (YYYY-MM-DD)
   address?: string;           // 주소 (선택)
   gender?: "male" | "female" | "other";  // 성별 (선택)
+  employeeId?: string;        // 사번 (선택, 없으면 자동 생성)
 }
 
 export interface EmployeeRegistrationResult {

@@ -8,6 +8,8 @@ const COMPANY_EMAIL_DOMAIN = "@suresofttech.com";
 
 // CSV 헤더 매핑
 const CSV_HEADERS = {
+  순서: "order",            // 무시됨 (표시용)
+  사번: "employeeId",       // 수동 입력 사번 (없으면 자동 생성)
   이름: "name",
   이메일: "email",
   부서: "orgLevel1",
@@ -136,12 +138,12 @@ export function parseEmployeeCSV(content: string): CSVParseResult {
 
   // 헤더 파싱
   const headers = parseCSVLine(lines[0]);
-  const headerMap = new Map<number, keyof NewEmployeeData>();
+  const headerMap = new Map<number, string>();
 
   headers.forEach((header, index) => {
     const mappedKey = CSV_HEADERS[header as keyof typeof CSV_HEADERS];
     if (mappedKey) {
-      headerMap.set(index, mappedKey as keyof NewEmployeeData);
+      headerMap.set(index, mappedKey);
     }
   });
 
@@ -178,6 +180,11 @@ export function parseEmployeeCSV(content: string): CSVParseResult {
     headerMap.forEach((field, index) => {
       const value = values[index]?.trim() || "";
 
+      // "order" 필드는 무시 (표시용)
+      if (field === "order") {
+        return;
+      }
+
       if (field === "gender" && value) {
         const normalizedGender = GENDER_MAP[value.toLowerCase()];
         if (normalizedGender) {
@@ -196,6 +203,9 @@ export function parseEmployeeCSV(content: string): CSVParseResult {
         }
       } else if (field === "phoneNumber" && value) {
         employee[field] = formatPhoneNumber(value);
+      } else if (field === "employeeId" && value) {
+        // 사번 - 빈 값이면 자동 생성되므로 값이 있을 때만 저장
+        employee[field] = value;
       } else if (value) {
         (employee as Record<string, string>)[field] = value;
       }
@@ -269,13 +279,13 @@ export function generateCSVTemplate(): string {
 }
 
 /**
- * 생년월일로 초기 비밀번호 생성
+ * 신입사원 기본 비밀번호 상수
  */
-export function generateInitialPassword(birthdate?: string): string {
-  if (birthdate) {
-    // YYYY-MM-DD → YYYYMMDD
-    return birthdate.replace(/-/g, "");
-  }
-  // 기본값: sure + 현재 연도
-  return `sure${new Date().getFullYear()}`;
+export const DEFAULT_PASSWORD = "suresoft1!";
+
+/**
+ * 초기 비밀번호 생성 (고정값)
+ */
+export function generateInitialPassword(): string {
+  return DEFAULT_PASSWORD;
 }

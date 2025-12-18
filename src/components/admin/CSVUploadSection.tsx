@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -18,6 +19,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Upload,
   Download,
   FileText,
@@ -25,11 +33,46 @@ import {
   CheckCircle2,
   Loader2,
   XCircle,
+  Pencil,
+  Trash2,
+  Plus,
+  Save,
+  X,
 } from "lucide-react";
+import {
+  ORG_LEVEL1_OPTIONS,
+  getOrgLevel2Options,
+  getOrgLevel3Options,
+} from "@/lib/constants/organization";
 import type { CSVParseResult, NewEmployeeData, BulkRegistrationResult } from "@/types/employee";
 
 interface CSVUploadSectionProps {
   onSuccess?: () => void;
+}
+
+interface EditableEmployee extends NewEmployeeData {
+  _id: string; // Unique ID for React key
+  _isEditing?: boolean;
+}
+
+function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+function createEmptyEmployee(): EditableEmployee {
+  return {
+    _id: generateId(),
+    name: "",
+    email: "",
+    orgLevel1: "",
+    orgLevel2: "",
+    orgLevel3: "",
+    phoneNumber: "",
+    birthdate: "",
+    gender: undefined,
+    employeeId: "",
+    _isEditing: true,
+  };
 }
 
 export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
@@ -37,9 +80,11 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
+  const [editableData, setEditableData] = useState<EditableEmployee[]>([]);
   const [registrationResult, setRegistrationResult] =
     useState<BulkRegistrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -81,6 +126,7 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
     setIsUploading(true);
     setError(null);
     setParseResult(null);
+    setEditableData([]);
     setRegistrationResult(null);
 
     try {
@@ -99,6 +145,14 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
       }
 
       setParseResult(data.data);
+      // Convert to editable data with unique IDs
+      setEditableData(
+        data.data.data.map((emp: NewEmployeeData) => ({
+          ...emp,
+          _id: generateId(),
+          _isEditing: false,
+        }))
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "업로드에 실패했습니다.");
     } finally {
@@ -107,16 +161,30 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
   }
 
   async function handleRegister() {
-    if (!parseResult || parseResult.data.length === 0) return;
+    if (editableData.length === 0) return;
+
+    // Validate all rows before submitting
+    const invalidRows = editableData.filter(
+      (emp) => !emp.name || !emp.email || !emp.orgLevel1 || !emp.phoneNumber
+    );
+    if (invalidRows.length > 0) {
+      setError(`${invalidRows.length}개 행에 필수 정보가 누락되었습니다.`);
+      return;
+    }
 
     setIsRegistering(true);
     setError(null);
 
     try {
+      // Remove internal fields before sending
+      const employeesToRegister = editableData.map(
+        ({ _id, _isEditing, ...emp }) => emp
+      );
+
       const response = await fetch("/api/admin/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employees: parseResult.data }),
+        body: JSON.stringify({ employees: employeesToRegister }),
       });
 
       const data = await response.json();
@@ -147,7 +215,7 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "employee_template.csv";
+      a.download = "신입사원_템플릿.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -159,8 +227,52 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
 
   function reset() {
     setParseResult(null);
+    setEditableData([]);
     setRegistrationResult(null);
     setError(null);
+    setEditingRowId(null);
+  }
+
+  function handleEditRow(id: string) {
+    setEditingRowId(id);
+  }
+
+  function handleSaveRow(id: string) {
+    setEditingRowId(null);
+  }
+
+  function handleCancelEdit(id: string) {
+    setEditingRowId(null);
+  }
+
+  function handleDeleteRow(id: string) {
+    setEditableData((prev) => prev.filter((emp) => emp._id !== id));
+  }
+
+  function handleAddRow() {
+    const newEmployee = createEmptyEmployee();
+    setEditableData((prev) => [...prev, newEmployee]);
+    setEditingRowId(newEmployee._id);
+  }
+
+  function updateEmployee(id: string, field: keyof NewEmployeeData, value: string) {
+    setEditableData((prev) =>
+      prev.map((emp) => {
+        if (emp._id !== id) return emp;
+
+        const updated = { ...emp, [field]: value };
+
+        // Reset dependent fields when parent changes
+        if (field === "orgLevel1") {
+          updated.orgLevel2 = "";
+          updated.orgLevel3 = "";
+        } else if (field === "orgLevel2") {
+          updated.orgLevel3 = "";
+        }
+
+        return updated;
+      })
+    );
   }
 
   return (
@@ -174,6 +286,7 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
           </CardTitle>
           <CardDescription>
             아래 템플릿을 다운로드하여 직원 정보를 입력한 후 업로드하세요.
+            (최대 200명까지 한 번에 등록 가능)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -288,19 +401,34 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
             </div>
           )}
 
-          {/* 파싱 결과 미리보기 */}
+          {/* 파싱 결과 편집 가능한 미리보기 */}
           {parseResult && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">미리보기</CardTitle>
-                <CardDescription>
-                  {parseResult.data.length}명의 직원 정보가 파싱되었습니다.
-                  {parseResult.errors.length > 0 && (
-                    <span className="text-yellow-500 ml-2">
-                      ({parseResult.errors.length}개 오류)
-                    </span>
-                  )}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Pencil className="w-5 h-5" />
+                      등록 데이터 편집
+                    </CardTitle>
+                    <CardDescription>
+                      {editableData.length}명의 직원 정보를 확인하고 수정할 수 있습니다.
+                      {parseResult.errors.length > 0 && (
+                        <span className="text-yellow-500 ml-2">
+                          (CSV 파싱 시 {parseResult.errors.length}개 오류 발견)
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddRow}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    행 추가
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* 오류 목록 */}
@@ -308,7 +436,7 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
                   <div className="p-3 bg-yellow-500/10 rounded-lg space-y-1">
                     <p className="text-sm font-medium text-yellow-600 flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
-                      파싱 오류
+                      CSV 파싱 오류 (아래 편집 기능으로 수정 가능)
                     </p>
                     {parseResult.errors.slice(0, 5).map((err, idx) => (
                       <p key={idx} className="text-xs text-muted-foreground">
@@ -323,69 +451,321 @@ export function CSVUploadSection({ onSuccess }: CSVUploadSectionProps) {
                   </div>
                 )}
 
-                {/* 데이터 테이블 */}
-                {parseResult.data.length > 0 && (
-                  <div className="max-h-80 overflow-auto border rounded-lg">
+                {/* 편집 가능한 데이터 테이블 */}
+                {editableData.length > 0 && (
+                  <div className="max-h-[500px] overflow-auto border rounded-lg">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                           <TableHead className="w-12">#</TableHead>
-                          <TableHead>이름</TableHead>
-                          <TableHead>이메일</TableHead>
-                          <TableHead>부서</TableHead>
-                          <TableHead>전화번호</TableHead>
+                          <TableHead className="w-24">사번</TableHead>
+                          <TableHead className="w-24">이름 *</TableHead>
+                          <TableHead className="w-48">이메일 *</TableHead>
+                          <TableHead className="w-36">부서 *</TableHead>
+                          <TableHead className="w-36">실</TableHead>
+                          <TableHead className="w-36">팀</TableHead>
+                          <TableHead className="w-32">전화번호 *</TableHead>
+                          <TableHead className="w-24">관리</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {parseResult.data.slice(0, 10).map((emp, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{idx + 1}</TableCell>
-                            <TableCell>{emp.name}</TableCell>
-                            <TableCell className="text-xs">
-                              {emp.email}
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {[emp.orgLevel1, emp.orgLevel2, emp.orgLevel3]
-                                .filter(Boolean)
-                                .join(" > ")}
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {emp.phoneNumber}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {editableData.map((emp, idx) => {
+                          const isEditing = editingRowId === emp._id;
+                          const orgLevel2Options = emp.orgLevel1
+                            ? getOrgLevel2Options(emp.orgLevel1)
+                            : [];
+                          const orgLevel3Options =
+                            emp.orgLevel1 && emp.orgLevel2
+                              ? getOrgLevel3Options(emp.orgLevel1, emp.orgLevel2)
+                              : [];
+
+                          return (
+                            <TableRow
+                              key={emp._id}
+                              className={
+                                isEditing ? "bg-muted/50" : undefined
+                              }
+                            >
+                              <TableCell className="text-muted-foreground">
+                                {idx + 1}
+                              </TableCell>
+
+                              {/* 사번 */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    className="h-8 text-xs"
+                                    value={emp.employeeId || ""}
+                                    onChange={(e) =>
+                                      updateEmployee(emp._id, "employeeId", e.target.value)
+                                    }
+                                    placeholder="자동"
+                                  />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {emp.employeeId || "(자동)"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 이름 */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    className="h-8 text-xs"
+                                    value={emp.name}
+                                    onChange={(e) =>
+                                      updateEmployee(emp._id, "name", e.target.value)
+                                    }
+                                    placeholder="이름"
+                                  />
+                                ) : (
+                                  <span className={!emp.name ? "text-red-500" : ""}>
+                                    {emp.name || "(미입력)"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 이메일 */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    className="h-8 text-xs"
+                                    value={emp.email}
+                                    onChange={(e) =>
+                                      updateEmployee(emp._id, "email", e.target.value)
+                                    }
+                                    placeholder="email@suresofttech.com"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-xs ${
+                                      !emp.email ? "text-red-500" : ""
+                                    }`}
+                                  >
+                                    {emp.email || "(미입력)"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 부서 (Level 1) */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={emp.orgLevel1 || "none"}
+                                    onValueChange={(v) =>
+                                      updateEmployee(
+                                        emp._id,
+                                        "orgLevel1",
+                                        v === "none" ? "" : v
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="부서" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">선택</SelectItem>
+                                      {ORG_LEVEL1_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt} value={opt}>
+                                          {opt}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span
+                                    className={`text-xs ${
+                                      !emp.orgLevel1 ? "text-red-500" : ""
+                                    }`}
+                                  >
+                                    {emp.orgLevel1 || "(미입력)"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 실 (Level 2) */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={emp.orgLevel2 || "none"}
+                                    onValueChange={(v) =>
+                                      updateEmployee(
+                                        emp._id,
+                                        "orgLevel2",
+                                        v === "none" ? "" : v
+                                      )
+                                    }
+                                    disabled={orgLevel2Options.length === 0}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="실" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">선택 안함</SelectItem>
+                                      {orgLevel2Options.map((opt) => (
+                                        <SelectItem key={opt} value={opt}>
+                                          {opt}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {emp.orgLevel2 || "-"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 팀 (Level 3) */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={emp.orgLevel3 || "none"}
+                                    onValueChange={(v) =>
+                                      updateEmployee(
+                                        emp._id,
+                                        "orgLevel3",
+                                        v === "none" ? "" : v
+                                      )
+                                    }
+                                    disabled={orgLevel3Options.length === 0}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="팀" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">선택 안함</SelectItem>
+                                      {orgLevel3Options.map((opt) => (
+                                        <SelectItem key={opt} value={opt}>
+                                          {opt}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    {emp.orgLevel3 || "-"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 전화번호 */}
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    className="h-8 text-xs"
+                                    value={emp.phoneNumber}
+                                    onChange={(e) =>
+                                      updateEmployee(emp._id, "phoneNumber", e.target.value)
+                                    }
+                                    placeholder="010-0000-0000"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-xs ${
+                                      !emp.phoneNumber ? "text-red-500" : ""
+                                    }`}
+                                  >
+                                    {emp.phoneNumber || "(미입력)"}
+                                  </span>
+                                )}
+                              </TableCell>
+
+                              {/* 관리 버튼 */}
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  {isEditing ? (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleSaveRow(emp._id)}
+                                        title="저장"
+                                      >
+                                        <Save className="h-4 w-4 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleCancelEdit(emp._id)}
+                                        title="취소"
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        onClick={() => handleEditRow(emp._id)}
+                                        title="수정"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                        onClick={() => handleDeleteRow(emp._id)}
+                                        title="삭제"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
-                    {parseResult.data.length > 10 && (
-                      <p className="text-xs text-muted-foreground p-2 text-center border-t">
-                        ... 외 {parseResult.data.length - 10}명
-                      </p>
-                    )}
+                  </div>
+                )}
+
+                {editableData.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>등록할 데이터가 없습니다.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={handleAddRow}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      직원 추가
+                    </Button>
                   </div>
                 )}
 
                 {/* 액션 버튼 */}
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={reset}>
-                    취소
-                  </Button>
-                  <Button
-                    onClick={handleRegister}
-                    disabled={
-                      isRegistering ||
-                      parseResult.data.length === 0 ||
-                      !parseResult.valid
-                    }
-                  >
-                    {isRegistering ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        등록 중...
-                      </>
-                    ) : (
-                      `${parseResult.data.length}명 등록하기`
-                    )}
-                  </Button>
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    * 표시된 필드는 필수입니다. 사번은 비워두면 자동 생성됩니다.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={reset}>
+                      취소
+                    </Button>
+                    <Button
+                      onClick={handleRegister}
+                      disabled={isRegistering || editableData.length === 0}
+                    >
+                      {isRegistering ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          등록 중...
+                        </>
+                      ) : (
+                        `${editableData.length}명 등록하기`
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

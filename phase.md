@@ -1,8 +1,184 @@
 # sureNet 개발 진행 현황
 
-> 마지막 업데이트: 2025-12-17
+> 마지막 업데이트: 2025-12-18
 
-## 현재 Phase: 18.1 완료 (신입사원 관리 + 온보딩 자동 입력)
+## 현재 Phase: 21 완료 (기수 시스템)
+
+---
+
+## Phase 21: 기수(Cohort) 시스템 구현
+**상태: 완료**
+
+### 목표
+각 기수별로 모든 데이터를 완전히 격리하는 시스템 구현. 다른 기수 간에는 메시지, 공지사항, 게시판, 캘린더 등의 데이터가 절대 공유되지 않음.
+
+### 21-1. 데이터베이스 스키마
+| 작업 | 상태 | 마이그레이션 |
+|------|------|-------------|
+| cohorts 테이블 생성 | ✅ 완료 | `create_cohorts_table` |
+| 기존 테이블에 cohort_id 추가 | ✅ 완료 | `add_cohort_id_to_tables` |
+| RLS 정책 업데이트 | ✅ 완료 | `update_rls_policies_for_cohort` |
+| 공채 13기 시드 및 데이터 마이그레이션 | ✅ 완료 | `seed_cohort_13_and_migrate` |
+
+### 21-2. 타입 및 유틸리티
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| database.ts 타입 업데이트 | ✅ 완료 | `src/types/database.ts` |
+| 기수 헬퍼 함수 | ✅ 완료 | `src/lib/utils/cohort.ts` |
+
+### 21-3. 기수 관리 API
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 기수 목록/생성 API | ✅ 완료 | `src/app/api/admin/cohorts/route.ts` |
+| 기수 상세/수정/삭제 API | ✅ 완료 | `src/app/api/admin/cohorts/[id]/route.ts` |
+| 기수별 사용자 관리 API | ✅ 완료 | `src/app/api/admin/cohorts/[id]/users/route.ts` |
+| 기수 선택 API | ✅ 완료 | `src/app/api/admin/cohorts/select/route.ts` |
+
+### 21-4. 기수 관리 UI
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| CohortCard 컴포넌트 | ✅ 완료 | `src/components/admin/CohortCard.tsx` |
+| CohortForm 컴포넌트 | ✅ 완료 | `src/components/admin/CohortForm.tsx` |
+| CohortSelector 컴포넌트 | ✅ 완료 | `src/components/admin/CohortSelector.tsx` |
+| CohortUserList 컴포넌트 | ✅ 완료 | `src/components/admin/CohortUserList.tsx` |
+| MoveUserModal 컴포넌트 | ✅ 완료 | `src/components/admin/MoveUserModal.tsx` |
+| 기수 관리 페이지 | ✅ 완료 | `src/app/(main)/admin/cohorts/page.tsx` |
+| 기수 상세 페이지 | ✅ 완료 | `src/app/(main)/admin/cohorts/[id]/page.tsx` |
+
+### 21-5. 인증 플로우 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 로그인 후 관리자 리다이렉트 | ✅ 완료 | `src/app/(auth)/login/page.tsx` |
+| 미들웨어 기수 선택 체크 | ✅ 완료 | `src/lib/supabase/middleware.ts` |
+| 사이드바 기수 관리 메뉴 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+
+### 21-6. 콘텐츠 API 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 공지사항 API | ✅ 완료 | `src/app/api/announcements/route.ts` |
+| 게시판 API | ✅ 완료 | `src/app/api/board/posts/route.ts` |
+| 캘린더 API | ✅ 완료 | `src/app/api/calendar/route.ts` |
+| 대화 API | ✅ 완료 | `src/app/api/conversations/route.ts` |
+
+### 21-7. 기타 API 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 사용자 검색 API | ✅ 완료 | `src/app/api/search/users/route.ts` |
+| 네트워크 그래프 API | ✅ 완료 | `src/app/api/graph/network/route.ts` |
+| 대시보드 API | ✅ 완료 | `src/app/api/dashboard/route.ts` |
+| 신입사원 관리 API | ✅ 완료 | `src/app/api/admin/employees/route.ts` |
+| 내 프로필 API | ✅ 완료 | `src/app/api/profile/me/route.ts` |
+| 타 사용자 프로필 API | ✅ 완료 | `src/app/api/profile/[id]/route.ts` |
+
+### 21-8. UI 컴포넌트 추가
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Switch 컴포넌트 | ✅ 완료 | `src/components/ui/switch.tsx` |
+
+### 기능 요약
+- **기수 소속**: 사용자당 하나의 기수만 소속 가능
+- **관리자 접근**: 관리자도 기수를 선택해야 해당 기수 데이터만 접근 가능
+- **기존 데이터**: 31명의 신입사원을 "공채 13기"로 자동 배정
+- **기수 관리**: 기수 CRUD + 사용자 관리 (목록, 기수 이동)
+- **완전한 데이터 격리**: 메시지, 공지사항, 게시판, 캘린더 등 모든 데이터가 기수별로 분리
+
+### 관리자 플로우
+```
+관리자 로그인
+    ↓
+/admin/cohorts 리다이렉트
+    ↓
+기수 목록 페이지
+    ├── 기수 생성 (이름, 설명)
+    ├── 기수 삭제 (빈 기수만)
+    ├── 기수 선택 → 쿠키 설정 → /dashboard 이동
+    └── 기수 상세 → 사용자 관리 (목록, 이동)
+```
+
+---
+
+## Phase 20: 신입사원 등록 개선
+**상태: 완료**
+
+### 목표
+일괄 등록 폼에 사번 입력 필드 추가 (자동/수동 선택) 및 CSV 템플릿 개선
+
+### 20-1. 타입 및 파싱 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| NewEmployeeData에 employeeId 필드 추가 | ✅ 완료 | `src/types/employee.ts` |
+| CSV 헤더 매핑 (순서, 사번 추가) | ✅ 완료 | `src/lib/utils/csv.ts` |
+| 사번 필드 파싱 로직 | ✅ 완료 | `src/lib/utils/csv.ts` |
+
+### 20-2. API 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 정적 템플릿 파일 다운로드 | ✅ 완료 | `src/app/api/admin/employees/csv/route.ts` |
+| 수동 사번 중복 체크 로직 | ✅ 완료 | `src/app/api/admin/employees/route.ts` |
+| 자동/수동 사번 처리 분기 | ✅ 완료 | `src/app/api/admin/employees/route.ts` |
+
+### 20-3. UI 컴포넌트 수정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 사번 입력 필드 + 자동생성 체크박스 | ✅ 완료 | `src/components/admin/EmployeeRegistrationForm.tsx` |
+| 미리보기 테이블에 사번 컬럼 추가 | ✅ 완료 | `src/components/admin/CSVUploadSection.tsx` |
+
+### 새로운 CSV 형식
+```csv
+순서,사번,이름,부서,실,팀,전화번호,생년월일,이메일,주소,성별
+1,2025001,김서연,시험자동화연구소,Cloud실,Frontend팀,010-1234-5678,1999-03-15,kim.seoyeon@suresofttech.com,서울특별시 강남구,여
+```
+
+### 기능 요약
+- **사번 자동/수동 선택**: 체크박스로 자동 생성 또는 수동 입력 선택
+- **수동 사번 중복 체크**: 이미 존재하는 사번 입력 시 오류 표시
+- **정적 템플릿 다운로드**: `신입사원_템플릿.csv` 파일 다운로드
+- **CSV 업로드 사번 처리**: 비어있으면 자동 생성, 입력되어 있으면 해당 값 사용
+
+---
+
+## Phase 19: 비밀번호 관리
+**상태: 완료**
+
+### 목표
+신입사원 초기 비밀번호 통일 및 비밀번호 변경 기능 추가
+
+### 19-1. 초기 비밀번호 변경
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| DEFAULT_PASSWORD 상수 정의 | ✅ 완료 | `src/lib/utils/csv.ts` |
+| generateInitialPassword() 고정값 반환 | ✅ 완료 | `src/lib/utils/csv.ts` |
+| 기존 31명 비밀번호 일괄 변경 | ✅ 완료 | Supabase Admin API |
+
+### 19-2. 비밀번호 변경 기능
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 비밀번호 변경 API | ✅ 완료 | `src/app/api/auth/change-password/route.ts` |
+| 설정 페이지 비밀번호 변경 UI | ✅ 완료 | `src/app/(main)/settings/page.tsx` |
+
+### 기능 요약
+- **초기 비밀번호**: 모든 신입사원 `suresoft1!`로 통일
+- **비밀번호 변경**: 설정 페이지에서 현재 비밀번호 확인 후 새 비밀번호로 변경 가능
+
+---
+
+## Phase 18.1: 온보딩 자동 입력
+**상태: 완료**
+
+### 목표
+관리자가 신입사원 계정 생성 시 입력한 정보를 온보딩에서 자동으로 채워주는 기능
+
+### 수정된 파일
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| InitialProfileData 타입 | ✅ 완료 | `src/types/onboarding.ts` |
+| createInitialStateFromProfile 함수 | ✅ 완료 | `src/types/onboarding.ts` |
+| 온보딩 페이지 프로필 조회 | ✅ 완료 | `src/app/onboarding/page.tsx` |
+| OnboardingWizard initialProfile 처리 | ✅ 완료 | `src/components/onboarding/OnboardingWizard.tsx` |
+
+### 기능 요약
+- 관리자 입력 데이터 (부서, 실, 팀) 온보딩 Step 1에 자동 입력
+- 신입사원은 직급, 근무지 등 추가 정보만 입력하면 됨
 
 ---
 
@@ -569,6 +745,12 @@ npx tsx src/scripts/regenerate-embeddings.ts
 | 2025-12-17 | 14 | 프로젝트 진단 및 개선 (임베딩 88% 복구, 보안 수정, RLS 최적화) |
 | 2025-12-17 | 15 | 신입사원 온보딩 서비스 피벗 (동호회, 추천 기능 삭제) |
 | 2025-12-17 | 16 | 온보딩 서비스 핵심 기능 추가 (캘린더, 게시판, 공지사항, Role 시스템) |
+| 2025-12-17 | 17 | 조직도 기반 온보딩 시스템 업데이트 (3단계 조직 선택, 직급 체계) |
+| 2025-12-17 | 18 | 신입사원 관리 시스템 (일괄 등록, CSV 업로드, 사번 자동 생성) |
+| 2025-12-17 | 18.1 | 온보딩 자동 입력 (관리자 입력 데이터 자동 채움) |
+| 2025-12-18 | 19 | 비밀번호 관리 (초기 비밀번호 통일, 비밀번호 변경 기능) |
+| 2025-12-18 | 20 | 신입사원 등록 개선 (사번 자동/수동 선택, CSV 템플릿 개선) |
+| 2025-12-18 | 21 | 기수 시스템 구현 (기수별 데이터 완전 격리, 관리자 기수 선택, 기수 관리 UI) |
 
 ---
 

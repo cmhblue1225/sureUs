@@ -122,6 +122,7 @@ export type Database = {
       announcements: {
         Row: {
           category: string | null
+          cohort_id: string | null
           comment_count: number | null
           content: string
           created_at: string | null
@@ -135,6 +136,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          cohort_id?: string | null
           comment_count?: number | null
           content: string
           created_at?: string | null
@@ -148,6 +150,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          cohort_id?: string | null
           comment_count?: number | null
           content?: string
           created_at?: string | null
@@ -333,6 +336,7 @@ export type Database = {
       }
       board_posts: {
         Row: {
+          cohort_id: string | null
           comment_count: number | null
           content: string
           created_at: string | null
@@ -347,6 +351,7 @@ export type Database = {
           view_count: number | null
         }
         Insert: {
+          cohort_id?: string | null
           comment_count?: number | null
           content: string
           created_at?: string | null
@@ -361,6 +366,7 @@ export type Database = {
           view_count?: number | null
         }
         Update: {
+          cohort_id?: string | null
           comment_count?: number | null
           content?: string
           created_at?: string | null
@@ -387,6 +393,7 @@ export type Database = {
       calendar_events: {
         Row: {
           all_day: boolean | null
+          cohort_id: string | null
           color: string | null
           created_at: string | null
           created_by: string
@@ -402,6 +409,7 @@ export type Database = {
         }
         Insert: {
           all_day?: boolean | null
+          cohort_id?: string | null
           color?: string | null
           created_at?: string | null
           created_by: string
@@ -417,6 +425,7 @@ export type Database = {
         }
         Update: {
           all_day?: boolean | null
+          cohort_id?: string | null
           color?: string | null
           created_at?: string | null
           created_by?: string
@@ -449,6 +458,7 @@ export type Database = {
       }
       conversations: {
         Row: {
+          cohort_id: string | null
           created_at: string | null
           id: string
           last_message_at: string | null
@@ -456,6 +466,7 @@ export type Database = {
           participant_2: string
         }
         Insert: {
+          cohort_id?: string | null
           created_at?: string | null
           id?: string
           last_message_at?: string | null
@@ -463,6 +474,7 @@ export type Database = {
           participant_2: string
         }
         Update: {
+          cohort_id?: string | null
           created_at?: string | null
           id?: string
           last_message_at?: string | null
@@ -824,11 +836,39 @@ export type Database = {
           },
         ]
       }
+      cohorts: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age_range: string | null
           career_goals: string | null
           certifications: string | null
+          cohort_id: string | null
           collaboration_style: string | null
           created_at: string | null
           department: string
@@ -861,6 +901,7 @@ export type Database = {
           age_range?: string | null
           career_goals?: string | null
           certifications?: string | null
+          cohort_id?: string | null
           collaboration_style?: string | null
           created_at?: string | null
           department?: string
@@ -893,6 +934,7 @@ export type Database = {
           age_range?: string | null
           career_goals?: string | null
           certifications?: string | null
+          cohort_id?: string | null
           collaboration_style?: string | null
           created_at?: string | null
           department?: string
