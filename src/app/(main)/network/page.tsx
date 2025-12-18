@@ -7,11 +7,8 @@ import {
   Controls,
   MiniMap,
   useNodesState,
-  useEdgesState,
   Node,
-  Edge,
   Position,
-  MarkerType,
   useReactFlow,
   ReactFlowProvider,
 } from "@xyflow/react";
@@ -32,7 +29,6 @@ import {
 import {
   calculateRadialPositions,
   calculateSearchBasedPositions,
-  calculateOpacity,
   type NodeWithScore,
   type NodePosition,
 } from "@/lib/graph/radialLayout";
@@ -85,10 +81,13 @@ const CENTER_Y = CANVAS_HEIGHT / 2;
 
 // 레이아웃 옵션
 const LAYOUT_OPTIONS = {
-  minRadius: 200,
-  maxRadius: 700,
-  nodeSize: 180, // 노드 크기 + 여백
+  minRadius: 180,
+  maxRadius: 500,
+  nodeSize: 200, // 노드 크기 + 여백 (겹침 방지)
 };
+
+// 검색 시 표시할 최소 관련도 임계값
+const SEARCH_RELEVANCE_THRESHOLD = 0.3;
 
 function NetworkPageContent() {
   const [loading, setLoading] = useState(true);
@@ -105,7 +104,6 @@ function NetworkPageContent() {
 
   // React Flow 상태
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { fitView } = useReactFlow();
 
   // 애니메이션 레퍼런스
@@ -259,31 +257,11 @@ function NetworkPageContent() {
       };
     });
 
-    // 엣지 생성 (유사도 0.3 이상만)
-    const flowEdges: Edge[] = networkData.edges
-      .filter((e) => e.similarity >= 0.3)
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        style: {
-          stroke: `rgba(139, 92, 246, ${0.2 + edge.similarity * 0.6})`,
-          strokeWidth: 1 + edge.similarity * 2,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 12,
-          height: 12,
-          color: `rgba(139, 92, 246, ${0.3 + edge.similarity * 0.5})`,
-        },
-      }));
-
     setNodes(flowNodes);
-    setEdges(flowEdges);
 
     // 초기 fitView
     setTimeout(() => fitView({ padding: 0.2 }), 100);
-  }, [networkData, setNodes, setEdges, fitView]);
+  }, [networkData, setNodes, fitView]);
 
   // 검색 결과 처리
   const handleSearchResults = useCallback(
@@ -308,15 +286,15 @@ function NetworkPageContent() {
           nodeSize: LAYOUT_OPTIONS.nodeSize,
         });
 
-        // 노드 데이터 업데이트 (검색 상태 해제)
+        // 노드 데이터 업데이트 (검색 상태 해제, 모든 노드 표시)
         setNodes((prevNodes) =>
           prevNodes.map((node) => ({
             ...node,
+            hidden: false, // 모든 노드 다시 표시
             data: {
               ...node.data,
               hasActiveSearch: false,
               relevanceScore: undefined,
-              relevanceOpacity: undefined,
               matchedFields: undefined,
             },
           }))
@@ -335,15 +313,20 @@ function NetworkPageContent() {
         resultMap.set(node.id, node);
       });
 
-      // 노드에 관련도 점수 추가
-      const nodesWithRelevance: NodeWithScore[] = results.nodes.map((n) => ({
+      // 관련도가 임계값 이상인 노드만 필터링 (현재 사용자 + 관련 노드)
+      const relevantNodes = results.nodes.filter(
+        (n) => n.isCurrentUser || (n.relevanceScore ?? 0) >= SEARCH_RELEVANCE_THRESHOLD
+      );
+
+      // 관련 노드만 레이아웃 계산 (유사도순 정렬됨)
+      const nodesWithRelevance: NodeWithScore[] = relevantNodes.map((n) => ({
         id: n.id,
         relevanceScore: n.relevanceScore,
         similarityScore: n.relevanceScore, // 검색 시에는 관련도 사용
       }));
 
-      // 검색 기반 위치 계산
-      const positions = calculateSearchBasedPositions(nodesWithRelevance, {
+      // 관련 노드만 방사형 배치
+      const positions = calculateRadialPositions(nodesWithRelevance, {
         centerX: CENTER_X,
         centerY: CENTER_Y,
         currentUserId: results.currentUserId,
@@ -352,27 +335,28 @@ function NetworkPageContent() {
         nodeSize: LAYOUT_OPTIONS.nodeSize,
       });
 
-      // 노드 데이터 업데이트
+      // 노드 데이터 업데이트 (관련 없는 노드는 숨김)
       setNodes((prevNodes) =>
         prevNodes.map((node) => {
           const searchResult = resultMap.get(node.id);
           const relevanceScore = searchResult?.relevanceScore ?? 0;
-          const opacity = calculateOpacity(relevanceScore, true);
+          const isCurrentUser = (node.data as EnhancedUserNodeData).isCurrentUser;
+          const isVisible = isCurrentUser || relevanceScore >= SEARCH_RELEVANCE_THRESHOLD;
 
           return {
             ...node,
+            hidden: !isVisible, // 관련도 낮은 노드는 숨김
             data: {
               ...node.data,
               hasActiveSearch: true,
               relevanceScore,
-              relevanceOpacity: opacity,
               matchedFields: searchResult?.matchedFields,
             },
           };
         })
       );
 
-      // 위치 애니메이션
+      // 위치 애니메이션 (표시되는 노드만)
       animateToPositions(positions, 800);
     },
     [networkData, setNodes, animateToPositions]
@@ -474,9 +458,7 @@ function NetworkPageContent() {
             <div className="h-[700px]">
               <ReactFlow
                 nodes={nodes}
-                edges={edges}
                 onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
                 onNodeClick={onNodeClick}
                 nodeTypes={nodeTypes}
                 fitView
@@ -539,33 +521,28 @@ function NetworkPageContent() {
                 <h3 className="font-medium mb-3">검색 결과</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">관련 인원</span>
+                    <span className="text-muted-foreground">표시 인원</span>
                     <span className="font-medium">
-                      {searchResults.filter((n) => (n.relevanceScore ?? 0) > 0.15).length}명
+                      {searchResults.filter((n) => n.isCurrentUser || (n.relevanceScore ?? 0) >= SEARCH_RELEVANCE_THRESHOLD).length}명
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">전체 인원</span>
-                    <span className="font-medium">{searchResults.length}명</span>
+                    <span className="text-muted-foreground text-xs">전체 {searchResults.length}명 중 관련도 {Math.round(SEARCH_RELEVANCE_THRESHOLD * 100)}% 이상</span>
                   </div>
                 </div>
                 <div className="mt-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">관련도 범례</p>
+                  <p className="text-xs text-muted-foreground">관련도 (거리로 표현)</p>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded bg-violet-500" />
-                    <span>높음 (50%+)</span>
+                    <div className="w-3 h-3 rounded-full bg-violet-500" />
+                    <span>높음 - 가까이</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded bg-violet-300" />
-                    <span>보통 (30-50%)</span>
+                    <div className="w-3 h-3 rounded-full bg-violet-300" />
+                    <span>보통 - 중간</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded bg-violet-100" />
-                    <span>낮음 (15-30%)</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
-                    <span>관련 없음</span>
+                    <div className="w-3 h-3 rounded-full bg-violet-100 border border-violet-200" />
+                    <span>낮음 - 멀리</span>
                   </div>
                 </div>
               </CardContent>
@@ -583,10 +560,6 @@ function NetworkPageContent() {
                     <span className="font-medium">{networkData.stats.totalNodes}명</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">연결 수</span>
-                    <span className="font-medium">{networkData.stats.totalEdges}개</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-muted-foreground">평균 유사도</span>
                     <span className="font-medium font-mono">
                       {Math.round(networkData.stats.averageSimilarity * 100)}%
@@ -601,28 +574,19 @@ function NetworkPageContent() {
           <Card>
             <CardContent className="pt-4">
               <h3 className="font-medium mb-3">범례</h3>
-              <div className="space-y-3 text-sm">
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">노드 위치</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-primary" />
-                    <span>중앙: 나</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-violet-400" />
-                    <span>가까움: 유사도 높음</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-gray-300" />
-                    <span>멀리: 유사도 낮음</span>
-                  </div>
+              <div className="space-y-2 text-sm">
+                <p className="text-xs text-muted-foreground">노드 위치 (중심에서의 거리)</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-primary" />
+                  <span>중앙: 나</span>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">연결선</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 bg-violet-500" />
-                    <span>강한 연결 (30%+)</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-card border-2 border-border" />
+                  <span>가까움: 유사도 높음</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-card border-2 border-border opacity-50" />
+                  <span>멀리: 유사도 낮음</span>
                 </div>
               </div>
             </CardContent>

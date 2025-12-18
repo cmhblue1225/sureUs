@@ -90,7 +90,7 @@ export function SemanticSearch({
   const [searchMode, setSearchMode] = useState<SearchMode>("exact");
 
   // 유사도 필터링 상태
-  const [minMatchScore, setMinMatchScore] = useState(0.2);
+  const [minMatchScore, setMinMatchScore] = useState(0.3);
   const [rawResults, setRawResults] = useState<SemanticSearchResult | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 

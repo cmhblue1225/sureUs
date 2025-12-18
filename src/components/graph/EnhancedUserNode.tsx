@@ -43,13 +43,11 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
     avatarUrl,
     isCurrentUser,
     isHighlighted,
-    isDimmed,
     clusterColor,
     onHover,
     id,
     // 검색/유사도 관련
     relevanceScore,
-    relevanceOpacity,
     hasActiveSearch,
     matchedFields,
     similarityScore,
@@ -63,20 +61,16 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
     onHover?.(null);
   };
 
-  // 검색 활성화 시 관련도 기반 스타일 계산
+  // 검색 활성화 시 관련도 기반 스타일 계산 (글로우 효과만 적용, opacity/scale 제거)
   const searchStyles = useMemo(() => {
     if (!hasActiveSearch || isCurrentUser) {
       return {
-        opacity: 1,
-        scale: 1,
         boxShadow: undefined,
         isHighRelevance: false,
       };
     }
 
     const relevance = relevanceScore ?? 0;
-    const opacity = relevanceOpacity ?? (relevance > 0 ? Math.max(0.3, relevance) : 0.15);
-    const scale = 0.9 + relevance * 0.2; // 0.9 ~ 1.1
 
     // 높은 관련도 (0.5 이상)일 때 글로우 효과
     const isHighRelevance = relevance >= 0.5;
@@ -84,8 +78,8 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
       ? `0 0 ${10 + relevance * 15}px rgba(139, 92, 246, ${0.3 + relevance * 0.3})`
       : undefined;
 
-    return { opacity, scale, boxShadow, isHighRelevance };
-  }, [hasActiveSearch, isCurrentUser, relevanceScore, relevanceOpacity]);
+    return { boxShadow, isHighRelevance };
+  }, [hasActiveSearch, isCurrentUser, relevanceScore]);
 
   // 유사도 점수 표시 (검색 없을 때)
   const showSimilarityBadge = !hasActiveSearch && similarityScore !== undefined && similarityScore > 0 && !isCurrentUser;
@@ -104,7 +98,6 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
             ? "border-primary/70 shadow-md"
             : "border-border hover:border-primary/50"
         }
-        ${isDimmed && !hasActiveSearch ? "opacity-25" : ""}
         ${isHighlighted && !isCurrentUser ? "ring-2 ring-primary/30 shadow-md" : ""}
         ${searchStyles.isHighRelevance ? "ring-2 ring-violet-400/50" : ""}
       `}
@@ -112,10 +105,8 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
         minWidth: 140,
         borderLeftColor: clusterColor,
         borderLeftWidth: clusterColor ? 4 : 2,
-        opacity: hasActiveSearch ? searchStyles.opacity : undefined,
-        transform: hasActiveSearch ? `scale(${searchStyles.scale})` : undefined,
         boxShadow: searchStyles.boxShadow,
-        transition: "opacity 0.4s ease-out, transform 0.4s ease-out, box-shadow 0.4s ease-out",
+        transition: "box-shadow 0.4s ease-out",
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

@@ -172,18 +172,18 @@ export function calculateSearchBasedPositions(
   const relevantNodes = otherNodes.filter((n) => (n.relevanceScore ?? 0) > 0);
   const irrelevantNodes = otherNodes.filter((n) => (n.relevanceScore ?? 0) === 0);
 
-  // 관련 노드들: 가까운 링에 배치
+  // 관련 노드들: 가까운 링에 배치 (minRadius ~ maxRadius * 0.5)
   if (relevantNodes.length > 0) {
     const innerRings = calculateRingLayout(
       relevantNodes.length,
       minRadius,
-      maxRadius * 0.55,
+      maxRadius * 0.5,
       nodeSize
     );
 
     let nodeIndex = 0;
     innerRings.forEach((ring, ringIndex) => {
-      const ringStartAngle = startAngle + (ringIndex * Math.PI / 5);
+      const ringStartAngle = startAngle + (ringIndex * Math.PI / 6);
 
       for (let i = 0; i < ring.count && nodeIndex < relevantNodes.length; i++) {
         const node = relevantNodes[nodeIndex];
@@ -199,11 +199,11 @@ export function calculateSearchBasedPositions(
     });
   }
 
-  // 관련 없는 노드들: 외곽 링에 배치
+  // 관련 없는 노드들: 외곽 링에 배치 (maxRadius * 0.55 ~ maxRadius)
   if (irrelevantNodes.length > 0) {
     const outerRings = calculateRingLayout(
       irrelevantNodes.length,
-      maxRadius * 0.65,
+      maxRadius * 0.55,
       maxRadius,
       nodeSize
     );
@@ -227,39 +227,6 @@ export function calculateSearchBasedPositions(
   }
 
   return positions;
-}
-
-/**
- * 관련도 기반 투명도 계산
- */
-export function calculateOpacity(
-  relevanceScore: number | undefined,
-  hasActiveSearch: boolean
-): number {
-  if (!hasActiveSearch) return 1.0;
-
-  const relevance = relevanceScore ?? 0;
-
-  if (relevance === 0) return 0.15;
-  if (relevance < 0.3) return 0.3;
-  if (relevance < 0.5) return 0.5;
-  if (relevance < 0.7) return 0.7;
-  return 1.0;
-}
-
-/**
- * 관련도 기반 노드 스케일 계산
- */
-export function calculateScale(
-  relevanceScore: number | undefined,
-  hasActiveSearch: boolean
-): number {
-  if (!hasActiveSearch) return 1.0;
-
-  const relevance = relevanceScore ?? 0;
-
-  // 관련도 높을수록 크게 (0.85 ~ 1.15)
-  return 0.85 + relevance * 0.3;
 }
 
 /**
