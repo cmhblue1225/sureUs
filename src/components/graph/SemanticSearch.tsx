@@ -5,7 +5,7 @@
  * 자연어 쿼리로 동료를 검색
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Search, Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal, Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import type { ExpandedQuery } from "@/lib/anthropic/queryExpansion";
 
-interface SemanticSearchNode {
+export interface SemanticSearchNode {
   id: string;
   userId: string;
   name: string;
@@ -25,10 +25,12 @@ interface SemanticSearchNode {
   avatarUrl?: string;
   hobbies: string[];
   isCurrentUser: boolean;
-  clusterId: string;
-  position: { x: number; y: number };
+  clusterId?: string;
+  position?: { x: number; y: number };
   matchScore?: number;
   matchReasons?: string[];
+  relevanceScore?: number; // 0-1, 검색 관련도
+  matchedFields?: string[];
 }
 
 interface SemanticSearchEdge {
@@ -44,13 +46,15 @@ interface SemanticSearchEdge {
 
 type SearchMode = "exact" | "broad";
 
-interface SemanticSearchResult {
+export interface SemanticSearchResult {
   nodes: SemanticSearchNode[];
-  edges: SemanticSearchEdge[];
+  edges?: SemanticSearchEdge[];
+  currentUserId: string;
   searchMeta: {
     originalQuery: string;
     expandedQuery: ExpandedQuery;
     totalResults: number;
+    totalNodes?: number;
     searchTime: number;
     usedFallback: boolean;
     searchMode: SearchMode;
@@ -90,37 +94,41 @@ export function SemanticSearch({
   const [rawResults, setRawResults] = useState<SemanticSearchResult | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // 콜백 ref로 무한 루프 방지
+  const onSearchResultsRef = useRef(onSearchResults);
+  onSearchResultsRef.current = onSearchResults;
+
   // 유사도 필터링 적용
   useEffect(() => {
     if (!rawResults) {
-      onSearchResults(null);
+      onSearchResultsRef.current(null);
       return;
     }
 
-    // matchScore 기준으로 노드 필터링
+    // matchScore 또는 relevanceScore 기준으로 노드 필터링
     const filteredNodes = rawResults.nodes.filter(
-      (node) => (node.matchScore ?? 0) >= minMatchScore
+      (node) => (node.matchScore ?? node.relevanceScore ?? 0) >= minMatchScore || node.isCurrentUser
     );
 
     // 필터링된 노드 ID 집합
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 
     // 해당 노드들 사이의 엣지만 유지
-    const filteredEdges = rawResults.edges.filter(
+    const filteredEdges = rawResults.edges?.filter(
       (edge) => filteredNodeIds.has(edge.source) && filteredNodeIds.has(edge.target)
-    );
+    ) || [];
 
     // 필터링된 결과 전달
-    onSearchResults({
+    onSearchResultsRef.current({
       ...rawResults,
       nodes: filteredNodes,
       edges: filteredEdges,
       searchMeta: {
         ...rawResults.searchMeta,
-        totalResults: filteredNodes.length,
+        totalResults: filteredNodes.filter(n => !n.isCurrentUser).length,
       },
     });
-  }, [rawResults, minMatchScore, onSearchResults]);
+  }, [rawResults, minMatchScore]);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim() || isLoading) return;
@@ -139,7 +147,7 @@ export function SemanticSearch({
 
       if (!result.success) {
         setError(result.error || "검색에 실패했습니다.");
-        onSearchResults(null);
+        onSearchResultsRef.current(null);
         return;
       }
 
@@ -149,11 +157,11 @@ export function SemanticSearch({
     } catch (err) {
       console.error("Semantic search error:", err);
       setError("검색 중 오류가 발생했습니다.");
-      onSearchResults(null);
+      onSearchResultsRef.current(null);
     } finally {
       setIsLoading(false);
     }
-  }, [query, isLoading, setIsLoading, onSearchResults, searchMode]);
+  }, [query, isLoading, setIsLoading, searchMode]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.nativeEvent.isComposing) {
@@ -171,7 +179,7 @@ export function SemanticSearch({
     setSearchMeta(null);
     setRawResults(null);
     setMinMatchScore(0.2);
-    onSearchResults(null);
+    onSearchResultsRef.current(null);
   };
 
   return (
@@ -394,7 +402,7 @@ export function SemanticSearch({
                   <p className="text-xs text-muted-foreground">
                     전체 {rawResults.nodes.length}명 중{" "}
                     <span className="text-foreground font-medium">
-                      {rawResults.nodes.filter((n) => (n.matchScore ?? 0) >= minMatchScore).length}명
+                      {rawResults.nodes.filter((n) => (n.matchScore ?? n.relevanceScore ?? 0) >= minMatchScore || n.isCurrentUser).length}명
                     </span>{" "}
                     표시
                   </p>

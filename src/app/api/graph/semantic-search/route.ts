@@ -9,13 +9,29 @@ import {
 } from "@/lib/anthropic/queryExpansion";
 import {
   performSemanticSearch,
-  resultsToGraphNodes,
   type SemanticSearchCandidate,
 } from "@/lib/matching/semanticMatcher";
 import type { Database } from "@/types/database";
+import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
+
+// 검색 결과 노드 타입 (관련도 점수 포함)
+export interface SearchResultNode {
+  id: string;
+  userId: string;
+  name: string;
+  department: string;
+  jobRole: string;
+  officeLocation: string;
+  mbti?: string;
+  avatarUrl?: string;
+  hobbies: string[];
+  isCurrentUser: boolean;
+  relevanceScore: number; // 0-1, 검색 관련도 (0 = 관련 없음)
+  matchedFields?: string[]; // 매칭된 필드들
+}
 
 // Helper to parse embedding
 function parseEmbedding(embedding: unknown): number[] | undefined {
@@ -132,7 +148,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 모든 프로필 및 임베딩 조회
+    // 3. 현재 사용자의 기수 확인
+    const isAdmin = await isUserAdmin(supabase, user.id);
+    const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { success: false, error: "기수가 선택되지 않았습니다." },
+        { status: 400 }
+      );
+    }
+
+    // 4. 현재 사용자의 프로필 조회
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: userProfileData } = (await supabase
+      .from("profiles")
+      .select("*, users!inner(id, name, avatar_url)")
+      .eq("user_id", user.id)
+      .single()) as any;
+
+    // 5. 모든 프로필 및 임베딩 조회 (동일 기수)
     const serviceClient = createServiceClient();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,17 +179,34 @@ export async function POST(request: NextRequest) {
         users!inner(id, name, avatar_url, deleted_at)
       `
       )
+      .eq("cohort_id", cohortId)
       .eq("is_profile_complete", true)
       .neq("user_id", user.id)
+      .neq("role", "admin")
       .is("users.deleted_at", null)
       .limit(100)) as any;
 
     if (!profiles || profiles.length === 0) {
+      // 현재 사용자만 반환
+      const currentUserNode: SearchResultNode = {
+        id: user.id,
+        userId: user.id,
+        name: userProfileData?.users?.name || "나",
+        department: userProfileData?.department || "",
+        jobRole: userProfileData?.job_role || "",
+        officeLocation: userProfileData?.office_location || "",
+        mbti: userProfileData?.mbti || undefined,
+        avatarUrl: userProfileData?.users?.avatar_url || undefined,
+        hobbies: [],
+        isCurrentUser: true,
+        relevanceScore: 1, // 자기 자신
+      };
+
       return NextResponse.json({
         success: true,
         data: {
-          nodes: [],
-          edges: [],
+          nodes: [currentUserNode],
+          currentUserId: user.id,
           searchMeta: {
             originalQuery: trimmedQuery,
             expandedQuery,
@@ -239,24 +291,82 @@ export async function POST(request: NextRequest) {
     const searchResults = performSemanticSearch(candidates, {
       expandedQuery,
       queryEmbedding,
-      limit: 30,
-      minScore: 0.15,
+      limit: 100, // 모든 후보 포함
+      minScore: 0, // 모든 점수 포함
     });
 
-    // 6. 그래프 노드/엣지 형식으로 변환
-    const { nodes, edges } = resultsToGraphNodes(searchResults, user.id);
+    // 6. 검색 결과 맵 생성 (userId -> score, matchedFields)
+    const searchResultMap = new Map<string, { score: number; matchedFields?: string[] }>();
+    searchResults.forEach((result) => {
+      searchResultMap.set(result.userId, {
+        score: result.totalScore,
+        matchedFields: result.matchReasons,
+      });
+    });
+
+    // 7. 현재 사용자 태그 조회
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: userTags } = (await serviceClient
+      .from("profile_tags")
+      .select("tag_name")
+      .eq("profile_id", userProfileData?.id)) as any;
+
+    // 8. 모든 노드 생성 (현재 사용자 포함)
+    const allNodes: SearchResultNode[] = [
+      // 현재 사용자 (중앙)
+      {
+        id: user.id,
+        userId: user.id,
+        name: userProfileData?.users?.name || "나",
+        department: userProfileData?.department || "",
+        jobRole: userProfileData?.job_role || "",
+        officeLocation: userProfileData?.office_location || "",
+        mbti: userProfileData?.mbti || undefined,
+        avatarUrl: userProfileData?.users?.avatar_url || undefined,
+        hobbies: userTags?.map((t: { tag_name: string }) => t.tag_name) || [],
+        isCurrentUser: true,
+        relevanceScore: 1, // 자기 자신
+      },
+      // 다른 사용자들
+      ...candidates.map((candidate) => {
+        const searchResult = searchResultMap.get(candidate.userId);
+        return {
+          id: candidate.userId,
+          userId: candidate.userId,
+          name: candidate.name,
+          department: candidate.department,
+          jobRole: candidate.jobRole,
+          officeLocation: candidate.officeLocation,
+          mbti: candidate.mbti,
+          avatarUrl: candidate.avatarUrl,
+          hobbies: candidate.hobbies,
+          isCurrentUser: false,
+          relevanceScore: searchResult?.score || 0,
+          matchedFields: searchResult?.matchedFields,
+        };
+      }),
+    ];
+
+    // 관련도순 정렬 (현재 사용자는 항상 첫 번째)
+    allNodes.sort((a, b) => {
+      if (a.isCurrentUser) return -1;
+      if (b.isCurrentUser) return 1;
+      return b.relevanceScore - a.relevanceScore;
+    });
 
     const searchTime = Date.now() - startTime;
+    const matchedCount = searchResults.filter((r) => r.totalScore >= 0.15).length;
 
     return NextResponse.json({
       success: true,
       data: {
-        nodes,
-        edges,
+        nodes: allNodes,
+        currentUserId: user.id,
         searchMeta: {
           originalQuery: trimmedQuery,
           expandedQuery,
-          totalResults: searchResults.length,
+          totalResults: matchedCount,
+          totalNodes: allNodes.length,
           searchTime,
           usedFallback,
           searchMode: validSearchMode,

@@ -17,6 +17,37 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EmbeddingRow = Database["public"]["Tables"]["embeddings"]["Row"];
 type ProfileWithUser = ProfileRow & { users: { id: string; name: string; avatar_url: string | null; deleted_at: string | null } };
 
+// Radial 레이아웃을 위한 노드 타입
+export interface RadialNetworkNode {
+  id: string;
+  userId: string;
+  name: string;
+  department: string;
+  jobRole: string;
+  officeLocation: string;
+  mbti?: string;
+  avatarUrl?: string;
+  hobbies: string[];
+  isCurrentUser: boolean;
+  similarityScore: number; // 0-1, 현재 사용자와의 유사도
+}
+
+export interface RadialNetworkResult {
+  nodes: RadialNetworkNode[];
+  edges: Array<{
+    id: string;
+    source: string;
+    target: string;
+    similarity: number;
+  }>;
+  currentUserId: string;
+  stats: {
+    totalNodes: number;
+    totalEdges: number;
+    averageSimilarity: number;
+  };
+}
+
 // Helper to parse embedding that may be stored as JSON string or already an array
 function parseEmbedding(embedding: unknown): number[] | undefined {
   if (!embedding) return undefined;
@@ -63,6 +94,9 @@ export async function GET(request: Request) {
     const maxNodes = Math.min(parseInt(searchParams.get("maxNodes") || "50"), 100);
     const canvasWidth = parseInt(searchParams.get("width") || "800");
     const canvasHeight = parseInt(searchParams.get("height") || "600");
+
+    // 레이아웃 모드: radial (방사형) or cluster (클러스터)
+    const layoutMode = (searchParams.get("layoutMode") || "radial") as "radial" | "cluster";
 
     // 키워드 필터 파라미터
     const keywords = searchParams.get("keywords") || "";
@@ -241,6 +275,98 @@ export async function GET(request: Request) {
       };
     });
 
+    // Radial 모드: 모든 사용자에 대해 유사도 점수 계산
+    if (layoutMode === "radial") {
+      // 모든 사용자에 대해 유사도 점수 계산
+      const usersWithScores = allOtherUsers.map((otherUser) => {
+        const scores = calculateEnhancedMatchScore(
+          currentUser,
+          otherUser,
+          null,
+          DEFAULT_ENHANCED_WEIGHTS
+        );
+        return {
+          ...otherUser,
+          similarityScore: scores.totalScore,
+        };
+      });
+
+      // 키워드 필터 적용 (선택적)
+      let filteredUsers = usersWithScores;
+      if (keywordList.length > 0) {
+        filteredUsers = usersWithScores.filter((u) =>
+          matchesKeywords(u.hobbies, keywordList, filterMode)
+        );
+      }
+
+      // 유사도순 정렬
+      filteredUsers.sort((a, b) => b.similarityScore - a.similarityScore);
+
+      // 노드 구성
+      const nodes: RadialNetworkNode[] = [
+        // 현재 사용자 (중앙)
+        {
+          id: user.id,
+          userId: user.id,
+          name: currentUser.name,
+          department: userProfile.department,
+          jobRole: userProfile.job_role,
+          officeLocation: userProfile.office_location,
+          mbti: userProfile.mbti || undefined,
+          avatarUrl: currentUser.avatarUrl,
+          hobbies: currentUser.hobbies,
+          isCurrentUser: true,
+          similarityScore: 1, // 자기 자신은 1
+        },
+        // 다른 사용자들
+        ...filteredUsers.map((u) => ({
+          id: u.userId,
+          userId: u.userId,
+          name: u.name,
+          department: u.department,
+          jobRole: u.jobRole,
+          officeLocation: u.officeLocation,
+          mbti: u.mbti,
+          avatarUrl: u.avatarUrl,
+          hobbies: u.hobbies,
+          isCurrentUser: false,
+          similarityScore: u.similarityScore,
+        })),
+      ];
+
+      // 엣지 구성 (현재 사용자와 연결, minSimilarity 이상만)
+      const edges = filteredUsers
+        .filter((u) => u.similarityScore >= minSimilarity)
+        .map((u) => ({
+          id: `${user.id}-${u.userId}`,
+          source: user.id,
+          target: u.userId,
+          similarity: u.similarityScore,
+        }));
+
+      // 평균 유사도 계산
+      const totalSimilarity = filteredUsers.reduce((sum, u) => sum + u.similarityScore, 0);
+      const averageSimilarity = filteredUsers.length > 0 ? totalSimilarity / filteredUsers.length : 0;
+
+      const result: RadialNetworkResult = {
+        nodes,
+        edges,
+        currentUserId: user.id,
+        stats: {
+          totalNodes: nodes.length,
+          totalEdges: edges.length,
+          averageSimilarity,
+        },
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: result,
+        layoutMode: "radial",
+      });
+    }
+
+    // Cluster 모드: 기존 로직
     // Filter to only include users related to the current user (above minSimilarity threshold + keyword filter)
     const relatedUsers = allOtherUsers.filter((otherUser) => {
       // 키워드 필터 적용
@@ -299,6 +425,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         data: result,
+        layoutMode: "cluster",
       });
     }
 
@@ -322,6 +449,7 @@ export async function GET(request: Request) {
           totalEdges: filteredEdges.length,
         },
       },
+      layoutMode: "cluster",
     });
   } catch (error) {
     console.error("Network API error:", error);

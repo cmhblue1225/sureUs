@@ -10,4 +10,4 @@ export { ClusterNode, type ClusterNodeData } from "./ClusterNode";
 export { CustomEdge, type CustomEdgeData } from "./CustomEdge";
 export { GraphControls } from "./GraphControls";
 export { ProfileModal } from "./ProfileModal";
-export { SemanticSearch } from "./SemanticSearch";
+export { SemanticSearch, type SemanticSearchResult, type SemanticSearchNode } from "./SemanticSearch";

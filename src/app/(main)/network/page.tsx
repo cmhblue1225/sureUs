@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -12,284 +12,401 @@ import {
   Edge,
   Position,
   MarkerType,
+  useReactFlow,
+  ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Search, X } from "lucide-react";
 import Link from "next/link";
 import {
   EnhancedUserNode,
-  CustomEdge,
-  GraphControls,
   ProfileModal,
   SemanticSearch,
   type EnhancedUserNodeData,
-  type CustomEdgeData,
+  type SemanticSearchResult,
+  type SemanticSearchNode,
 } from "@/components/graph";
-import { KeywordFilter } from "@/components/graph/KeywordFilter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useGraphInteraction } from "@/hooks/useGraphInteraction";
-import type {
-  ClusteringResult,
-  ClusteredNode,
-  ClusteredEdge,
-  ClusterDefinition,
-} from "@/lib/graph/clustering";
+import {
+  calculateRadialPositions,
+  calculateSearchBasedPositions,
+  calculateOpacity,
+  type NodeWithScore,
+  type NodePosition,
+} from "@/lib/graph/radialLayout";
+import { easeOutCubic, lerpPosition } from "@/lib/graph/easing";
+import type { ClusteredNode } from "@/lib/graph/clustering";
 
-// Register custom node and edge types
+// Register custom node types
 const nodeTypes = {
   enhancedUser: EnhancedUserNode,
 };
 
-const edgeTypes = {
-  custom: CustomEdge,
-};
-
-interface APIResponse {
-  success: boolean;
-  error?: string;
-  data?: ClusteringResult;
+// API 응답 타입
+interface RadialNetworkNode {
+  id: string;
+  userId: string;
+  name: string;
+  department: string;
+  jobRole: string;
+  officeLocation: string;
+  mbti?: string;
+  avatarUrl?: string;
+  hobbies: string[];
+  isCurrentUser: boolean;
+  similarityScore: number;
 }
 
-export default function NetworkPage() {
+interface RadialNetworkResult {
+  nodes: RadialNetworkNode[];
+  edges: Array<{
+    id: string;
+    source: string;
+    target: string;
+    similarity: number;
+  }>;
+  currentUserId: string;
+  stats: {
+    totalNodes: number;
+    totalEdges: number;
+    averageSimilarity: number;
+  };
+}
+
+// SemanticSearchNode를 사용 (이미 relevanceScore, matchedFields 포함)
+
+// 캔버스 크기
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 800;
+const CENTER_X = CANVAS_WIDTH / 2;
+const CENTER_Y = CANVAS_HEIGHT / 2;
+
+function NetworkPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clusteringResult, setClusteringResult] = useState<ClusteringResult | null>(null);
-  const [minSimilarity, setMinSimilarity] = useState(0.2);
+  const [networkData, setNetworkData] = useState<RadialNetworkResult | null>(null);
   const [selectedNode, setSelectedNode] = useState<ClusteredNode | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<ClusteredEdge | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // 키워드 필터 상태
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [filterMode, setFilterMode] = useState<"any" | "all">("any");
+  // 검색 상태
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SemanticSearchNode[] | null>(null);
+  const [hasActiveSearch, setHasActiveSearch] = useState(false);
 
-  // 의미 검색 상태
-  const [searchMode, setSearchMode] = useState<"keyword" | "semantic">("keyword");
-  const [semanticResults, setSemanticResults] = useState<{
-    nodes: Array<{
-      id: string;
-      userId: string;
-      name: string;
-      department: string;
-      jobRole: string;
-      officeLocation: string;
-      mbti?: string;
-      avatarUrl?: string;
-      hobbies: string[];
-      isCurrentUser: boolean;
-      clusterId: string;
-      position: { x: number; y: number };
-      matchScore?: number;
-      matchReasons?: string[];
-    }>;
-    edges: Array<{
-      id: string;
-      source: string;
-      target: string;
-      similarity: number;
-      commonTags: string[];
-      connectionType: string;
-      strengthLevel: string;
-      mbtiCompatible: boolean;
-    }>;
-  } | null>(null);
-  const [semanticLoading, setSemanticLoading] = useState(false);
-
+  // React Flow 상태
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const { fitView } = useReactFlow();
 
-  // Graph interaction hook
-  const interaction = useGraphInteraction(
-    clusteringResult?.edges || [],
-    clusteringResult?.clusters || []
-  );
+  // 애니메이션 레퍼런스
+  const animationRef = useRef<{
+    frameId: number | null;
+    startTime: number | null;
+    startPositions: Map<string, NodePosition>;
+    targetPositions: Map<string, NodePosition>;
+  }>({
+    frameId: null,
+    startTime: null,
+    startPositions: new Map(),
+    targetPositions: new Map(),
+  });
 
-  // Fetch network data
+  // 현재 노드 위치 추적
+  const currentPositionsRef = useRef<Map<string, NodePosition>>(new Map());
+
+  // 네트워크 데이터 fetch
   const fetchNetwork = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // 키워드 파라미터 추가
-      const keywordsParam = selectedTags.length > 0
-        ? `&keywords=${encodeURIComponent(selectedTags.join(","))}&filterMode=${filterMode}`
-        : "";
-
       const response = await fetch(
-        `/api/graph/network?minSimilarity=${minSimilarity}&width=800&height=600${keywordsParam}`
+        `/api/graph/network?layoutMode=radial&minSimilarity=0&maxNodes=100`
       );
-      const data: APIResponse = await response.json();
+      const data = await response.json();
 
       if (!data.success || !data.data) {
         setError(data.error || "네트워크 데이터를 불러올 수 없습니다.");
         return;
       }
 
-      setClusteringResult(data.data);
+      setNetworkData(data.data);
     } catch (err) {
       setError("네트워크를 불러오는데 실패했습니다.");
     } finally {
       setLoading(false);
     }
-  }, [minSimilarity, selectedTags, filterMode]);
+  }, []);
 
   useEffect(() => {
     fetchNetwork();
   }, [fetchNetwork]);
 
-  // Convert clustering result to React Flow format
-  useEffect(() => {
-    if (!clusteringResult) return;
+  // 애니메이션 함수
+  const animateToPositions = useCallback(
+    (targetPositions: Map<string, NodePosition>, duration: number = 600) => {
+      // 기존 애니메이션 취소
+      if (animationRef.current.frameId) {
+        cancelAnimationFrame(animationRef.current.frameId);
+      }
 
-    // Build cluster color map
-    const clusterColorMap = new Map<string, string>();
-    clusteringResult.clusters.forEach((c) => {
-      clusterColorMap.set(c.id, c.color);
+      // 시작 위치 저장
+      const startPositions = new Map<string, NodePosition>();
+      nodes.forEach((node) => {
+        startPositions.set(node.id, {
+          x: currentPositionsRef.current.get(node.id)?.x ?? node.position.x,
+          y: currentPositionsRef.current.get(node.id)?.y ?? node.position.y,
+        });
+      });
+
+      animationRef.current.startPositions = startPositions;
+      animationRef.current.targetPositions = targetPositions;
+      animationRef.current.startTime = null;
+
+      const animate = (timestamp: number) => {
+        if (!animationRef.current.startTime) {
+          animationRef.current.startTime = timestamp;
+        }
+
+        const elapsed = timestamp - animationRef.current.startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeOutCubic(progress);
+
+        setNodes((prevNodes) =>
+          prevNodes.map((node) => {
+            const start = animationRef.current.startPositions.get(node.id);
+            const target = animationRef.current.targetPositions.get(node.id);
+
+            if (!start || !target) return node;
+
+            const newPosition = lerpPosition(start, target, easedProgress);
+            currentPositionsRef.current.set(node.id, newPosition);
+
+            return {
+              ...node,
+              position: newPosition,
+            };
+          })
+        );
+
+        if (progress < 1) {
+          animationRef.current.frameId = requestAnimationFrame(animate);
+        } else {
+          animationRef.current.frameId = null;
+        }
+      };
+
+      animationRef.current.frameId = requestAnimationFrame(animate);
+    },
+    [nodes, setNodes]
+  );
+
+  // 초기 방사형 레이아웃 계산 및 노드 생성
+  useEffect(() => {
+    if (!networkData) return;
+
+    // 노드 점수 배열 생성
+    const nodesWithScores: NodeWithScore[] = networkData.nodes.map((n) => ({
+      id: n.id,
+      similarityScore: n.similarityScore,
+    }));
+
+    // 방사형 위치 계산
+    const positions = calculateRadialPositions(nodesWithScores, {
+      centerX: CENTER_X,
+      centerY: CENTER_Y,
+      currentUserId: networkData.currentUserId,
+      minRadius: 150,
+      maxRadius: 450,
     });
 
-    // Convert nodes
-    const flowNodes: Node[] = clusteringResult.nodes.map((node) => ({
-      id: node.id,
-      type: "enhancedUser",
-      data: {
-        ...node,
-        isHighlighted: interaction.isNodeHighlighted(node.id),
-        isDimmed: interaction.isNodeDimmed(node.id),
-        clusterColor: clusterColorMap.get(node.clusterId),
-        onHover: interaction.onNodeHover,
-      },
-      position: node.position,
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-    }));
+    // React Flow 노드 생성
+    const flowNodes: Node[] = networkData.nodes.map((node) => {
+      const pos = positions.get(node.id) || { x: CENTER_X, y: CENTER_Y };
+      currentPositionsRef.current.set(node.id, pos);
 
-    // Filter edges by similarity
-    const filteredEdges = clusteringResult.edges.filter(
-      (e) => e.similarity >= minSimilarity
-    );
+      return {
+        id: node.id,
+        type: "enhancedUser",
+        data: {
+          id: node.id,
+          userId: node.userId,
+          name: node.name,
+          department: node.department,
+          jobRole: node.jobRole,
+          officeLocation: node.officeLocation,
+          mbti: node.mbti,
+          avatarUrl: node.avatarUrl,
+          hobbies: node.hobbies,
+          isCurrentUser: node.isCurrentUser,
+          similarityScore: node.similarityScore,
+          hasActiveSearch: false,
+        } as EnhancedUserNodeData,
+        position: pos,
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
+      };
+    });
 
-    // Convert edges
-    const flowEdges: Edge[] = filteredEdges.map((edge) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: "custom",
-      data: {
-        similarity: edge.similarity,
-        commonTags: edge.commonTags,
-        connectionType: edge.connectionType,
-        strengthLevel: edge.strengthLevel,
-        mbtiCompatible: edge.mbtiCompatible,
-        isHighlighted: interaction.isEdgeHighlighted(edge.id),
-        isDimmed: interaction.isEdgeDimmed(edge.id),
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
-      },
-    }));
+    // 엣지 생성 (유사도 0.3 이상만)
+    const flowEdges: Edge[] = networkData.edges
+      .filter((e) => e.similarity >= 0.3)
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        style: {
+          stroke: `rgba(139, 92, 246, ${0.2 + edge.similarity * 0.6})`,
+          strokeWidth: 1 + edge.similarity * 2,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 12,
+          height: 12,
+          color: `rgba(139, 92, 246, ${0.3 + edge.similarity * 0.5})`,
+        },
+      }));
 
     setNodes(flowNodes);
     setEdges(flowEdges);
-  }, [
-    clusteringResult,
-    minSimilarity,
-    interaction.hoveredNodeId,
-    interaction.selectedNodeId,
-    setNodes,
-    setEdges,
-  ]);
 
-  // Node click handler - opens profile modal
+    // 초기 fitView
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
+  }, [networkData, setNodes, setEdges, fitView]);
+
+  // 검색 결과 처리
+  const handleSearchResults = useCallback(
+    (results: SemanticSearchResult | null) => {
+      if (!results || !networkData) {
+        // 검색 초기화
+        setSearchResults(null);
+        setHasActiveSearch(false);
+
+        // 원래 방사형 위치로 복귀
+        const nodesWithScores: NodeWithScore[] = networkData?.nodes.map((n) => ({
+          id: n.id,
+          similarityScore: n.similarityScore,
+        })) || [];
+
+        const positions = calculateRadialPositions(nodesWithScores, {
+          centerX: CENTER_X,
+          centerY: CENTER_Y,
+          currentUserId: networkData?.currentUserId || "",
+          minRadius: 150,
+          maxRadius: 450,
+        });
+
+        // 노드 데이터 업데이트 (검색 상태 해제)
+        setNodes((prevNodes) =>
+          prevNodes.map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              hasActiveSearch: false,
+              relevanceScore: undefined,
+              relevanceOpacity: undefined,
+              matchedFields: undefined,
+            },
+          }))
+        );
+
+        animateToPositions(positions);
+        return;
+      }
+
+      setSearchResults(results.nodes);
+      setHasActiveSearch(true);
+
+      // 검색 결과 맵 생성
+      const resultMap = new Map<string, SemanticSearchNode>();
+      results.nodes.forEach((node) => {
+        resultMap.set(node.id, node);
+      });
+
+      // 노드에 관련도 점수 추가
+      const nodesWithRelevance: NodeWithScore[] = results.nodes.map((n) => ({
+        id: n.id,
+        relevanceScore: n.relevanceScore,
+        similarityScore: n.relevanceScore, // 검색 시에는 관련도 사용
+      }));
+
+      // 검색 기반 위치 계산
+      const positions = calculateSearchBasedPositions(nodesWithRelevance, {
+        centerX: CENTER_X,
+        centerY: CENTER_Y,
+        currentUserId: results.currentUserId,
+        minRadius: 120,
+        maxRadius: 500,
+      });
+
+      // 노드 데이터 업데이트
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          const searchResult = resultMap.get(node.id);
+          const relevanceScore = searchResult?.relevanceScore ?? 0;
+          const opacity = calculateOpacity(relevanceScore, true);
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              hasActiveSearch: true,
+              relevanceScore,
+              relevanceOpacity: opacity,
+              matchedFields: searchResult?.matchedFields,
+            },
+          };
+        })
+      );
+
+      // 위치 애니메이션
+      animateToPositions(positions, 800);
+    },
+    [networkData, setNodes, animateToPositions]
+  );
+
+  // 검색 초기화
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    handleSearchResults(null);
+  }, [handleSearchResults]);
+
+  // 노드 클릭 핸들러
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      const clusteredNode = clusteringResult?.nodes.find((n) => n.id === node.id);
-      if (clusteredNode) {
-        setSelectedNode(clusteredNode);
-        setSelectedEdge(null);
+      const nodeData = networkData?.nodes.find((n) => n.id === node.id);
+      if (nodeData) {
+        setSelectedNode({
+          id: nodeData.id,
+          userId: nodeData.userId,
+          name: nodeData.name,
+          department: nodeData.department,
+          jobRole: nodeData.jobRole,
+          officeLocation: nodeData.officeLocation,
+          mbti: nodeData.mbti,
+          avatarUrl: nodeData.avatarUrl,
+          hobbies: nodeData.hobbies,
+          isCurrentUser: nodeData.isCurrentUser,
+          clusterId: "",
+          position: node.position,
+        });
         setIsProfileModalOpen(true);
-        interaction.onNodeSelect(node.id);
       }
     },
-    [clusteringResult, interaction]
+    [networkData]
   );
 
-  // Edge click handler
-  const onEdgeClick = useCallback(
-    (_event: React.MouseEvent, edge: Edge) => {
-      const clusteredEdge = clusteringResult?.edges.find((e) => e.id === edge.id);
-      if (clusteredEdge) {
-        setSelectedEdge(clusteredEdge);
-        setSelectedNode(null);
-        interaction.onEdgeSelect(edge.id);
-      }
-    },
-    [clusteringResult, interaction]
-  );
-
-  // Pane click handler
-  const onPaneClick = useCallback(() => {
-    setSelectedEdge(null);
-    interaction.resetSelection();
-  }, [interaction]);
-
-  // Cluster colors for legend
-  const clusterColors = useMemo(() => {
-    if (!clusteringResult) return [];
-    return clusteringResult.clusters.map((c) => ({
-      label: c.label,
-      color: c.color,
-    }));
-  }, [clusteringResult]);
-
-  // 의미 검색 결과를 그래프에 반영
+  // 클린업
   useEffect(() => {
-    if (searchMode !== "semantic" || !semanticResults) return;
-
-    // 의미 검색 결과를 Flow 노드/엣지로 변환
-    const flowNodes: Node[] = semanticResults.nodes.map((node) => ({
-      id: node.id,
-      type: "enhancedUser",
-      data: {
-        ...node,
-        isHighlighted: interaction.isNodeHighlighted(node.id),
-        isDimmed: interaction.isNodeDimmed(node.id),
-        clusterColor: "#8B5CF6", // 의미 검색용 보라색
-        onHover: interaction.onNodeHover,
-      },
-      position: node.position,
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-    }));
-
-    const flowEdges: Edge[] = semanticResults.edges.map((edge) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: "custom",
-      data: {
-        similarity: edge.similarity,
-        commonTags: edge.commonTags,
-        connectionType: edge.connectionType,
-        strengthLevel: edge.strengthLevel,
-        mbtiCompatible: edge.mbtiCompatible,
-        isHighlighted: interaction.isEdgeHighlighted(edge.id),
-        isDimmed: interaction.isEdgeDimmed(edge.id),
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
-      },
-    }));
-
-    setNodes(flowNodes);
-    setEdges(flowEdges);
-  }, [searchMode, semanticResults, interaction.hoveredNodeId, interaction.selectedNodeId, setNodes, setEdges]);
+    return () => {
+      if (animationRef.current.frameId) {
+        cancelAnimationFrame(animationRef.current.frameId);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -305,7 +422,7 @@ export default function NetworkPage() {
         <div>
           <h1 className="text-3xl font-bold">네트워크 그래프</h1>
           <p className="text-muted-foreground mt-1">
-            나와 연결된 동료들의 관계를 시각적으로 탐색하세요
+            나를 중심으로 동료들과의 관계를 탐색하세요
           </p>
         </div>
 
@@ -325,11 +442,12 @@ export default function NetworkPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">네트워크 그래프</h1>
           <p className="text-muted-foreground mt-1">
-            나와 연결된 동료들의 관계를 시각적으로 탐색하세요
+            나를 중심으로 동료들과의 관계를 탐색하세요
           </p>
         </div>
         <Button variant="outline" onClick={fetchNetwork} disabled={loading}>
@@ -338,38 +456,36 @@ export default function NetworkPage() {
         </Button>
       </div>
 
-      {/* Main Area: Graph + Right Sidebar */}
+      {/* Main Area */}
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Graph */}
         <div className="lg:col-span-3">
           <Card className="overflow-hidden">
-            <div className="h-[600px]">
+            <div className="h-[700px]">
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onNodeClick={onNodeClick}
-                onEdgeClick={onEdgeClick}
-                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
                 fitView
                 fitViewOptions={{ padding: 0.2 }}
-                minZoom={0.3}
+                minZoom={0.2}
                 maxZoom={2}
-                defaultEdgeOptions={{
-                  type: "custom",
-                }}
+                proOptions={{ hideAttribution: true }}
               >
                 <Background />
                 <Controls />
                 <MiniMap
                   nodeColor={(node) => {
                     const data = node.data as unknown as EnhancedUserNodeData;
-                    return data?.isCurrentUser
-                      ? "hsl(var(--primary))"
-                      : data?.clusterColor || "hsl(var(--muted))";
+                    if (data?.isCurrentUser) return "hsl(var(--primary))";
+                    if (hasActiveSearch && data?.relevanceScore) {
+                      const opacity = 0.3 + (data.relevanceScore * 0.7);
+                      return `rgba(139, 92, 246, ${opacity})`;
+                    }
+                    return "hsl(var(--muted))";
                   }}
                   maskColor="rgba(0, 0, 0, 0.1)"
                 />
@@ -378,226 +494,131 @@ export default function NetworkPage() {
           </Card>
         </div>
 
-        {/* Right Sidebar: Filter + Search */}
+        {/* Right Sidebar */}
         <div className="space-y-4">
-          {/* Filter Controls */}
-          {clusteringResult && (
-            <Card>
-              <CardContent className="pt-4 space-y-4">
-                <div>
-                  <p className="text-sm font-medium mb-3">유사도 필터</p>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">최소 유사도</span>
-                      <span className="font-mono font-medium">{Math.round(minSimilarity * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={minSimilarity * 100}
-                      onChange={(e) => setMinSimilarity(Number(e.target.value) / 100)}
-                      className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs"
-                    onClick={interaction.expandAllClusters}
-                  >
-                    모두 펼치기
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs"
-                    onClick={interaction.collapseAllClusters}
-                  >
-                    모두 접기
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Search Tabs */}
+          {/* Search */}
           <Card>
             <CardContent className="pt-4">
-              <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as "keyword" | "semantic")}>
-                <TabsList className="w-full mb-4">
-                  <TabsTrigger value="keyword" className="flex-1">키워드</TabsTrigger>
-                  <TabsTrigger value="semantic" className="flex-1">의미검색</TabsTrigger>
-                </TabsList>
-                <TabsContent value="keyword" className="mt-0">
-                  <KeywordFilter
-                    selectedTags={selectedTags}
-                    onTagsChange={setSelectedTags}
-                    filterMode={filterMode}
-                    onFilterModeChange={setFilterMode}
-                  />
-                </TabsContent>
-                <TabsContent value="semantic" className="mt-0">
-                  <SemanticSearch
-                    onSearchResults={setSemanticResults}
-                    isLoading={semanticLoading}
-                    setIsLoading={setSemanticLoading}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          {/* Selected Edge Info */}
-          {selectedEdge && (
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-semibold mb-3">연결 정보</h3>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">유사도</span>
-                    <span className="font-mono font-medium">
-                      {Math.round(selectedEdge.similarity * 100)}%
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">연결 유형</span>
-                    <Badge variant={selectedEdge.connectionType === "cross_department" ? "default" : "secondary"}>
-                      {selectedEdge.connectionType === "cross_department" ? "타부서" : "같은 부서"}
-                    </Badge>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">강도</span>
-                    <Badge
-                      variant={
-                        selectedEdge.strengthLevel === "strong"
-                          ? "default"
-                          : selectedEdge.strengthLevel === "moderate"
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {selectedEdge.strengthLevel === "strong"
-                        ? "강함"
-                        : selectedEdge.strengthLevel === "moderate"
-                          ? "보통"
-                          : "약함"}
-                    </Badge>
-                  </div>
-
-                  {selectedEdge.mbtiCompatible && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">MBTI 궁합</span>
-                      <span className="text-green-600">좋음</span>
-                    </div>
-                  )}
-
-                  {selectedEdge.commonTags.length > 0 && (
-                    <div>
-                      <p className="text-muted-foreground mb-2">공통 관심사:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedEdge.commonTags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Row: Stats + Legend */}
-      {clusteringResult && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Network Stats */}
-          <Card>
-            <CardContent className="pt-4">
-              <h3 className="text-sm font-medium mb-3">네트워크 통계</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">총 노드</span>
-                  <span className="font-medium">{clusteringResult.stats.totalNodes}명</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">총 연결</span>
-                  <span className="font-medium">{clusteringResult.stats.totalEdges}개</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">클러스터</span>
-                  <span className="font-medium">{clusteringResult.stats.clusterCount}개</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">평균 유사도</span>
-                  <span className="font-medium font-mono">
-                    {Math.round(clusteringResult.stats.averageSimilarity * 100)}%
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 mb-4">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <h3 className="font-medium">의미 검색</h3>
               </div>
+              <SemanticSearch
+                onSearchResults={handleSearchResults}
+                isLoading={isSearching}
+                setIsLoading={setIsSearching}
+              />
+              {hasActiveSearch && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-3"
+                  onClick={handleClearSearch}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  검색 초기화
+                </Button>
+              )}
             </CardContent>
           </Card>
 
-          {/* Legend - Node Types */}
-          <Card>
-            <CardContent className="pt-4">
-              <h3 className="text-sm font-medium mb-3">범례</h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">노드 유형</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-primary/20 border-2 border-primary" />
-                    <span>나</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-card border-2 border-border" />
-                    <span>동료</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">연결 유형</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 bg-muted-foreground/50" />
-                    <span>같은 부서</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 bg-primary/70" style={{ background: "repeating-linear-gradient(90deg, hsl(var(--primary)) 0, hsl(var(--primary)) 3px, transparent 3px, transparent 6px)" }} />
-                    <span>타 부서</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Cluster Colors */}
-          {clusterColors.length > 0 && (
+          {/* Search Results Info */}
+          {hasActiveSearch && searchResults && (
             <Card>
               <CardContent className="pt-4">
-                <h3 className="text-sm font-medium mb-3">부서 색상</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {clusterColors.slice(0, 9).map(({ label, color }) => (
-                    <div key={label} className="flex items-center gap-1.5 text-xs">
-                      <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="truncate">{label}</span>
-                    </div>
-                  ))}
+                <h3 className="font-medium mb-3">검색 결과</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">관련 인원</span>
+                    <span className="font-medium">
+                      {searchResults.filter((n) => (n.relevanceScore ?? 0) > 0.15).length}명
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">전체 인원</span>
+                    <span className="font-medium">{searchResults.length}명</span>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-1">
+                  <p className="text-xs text-muted-foreground">관련도 범례</p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded bg-violet-500" />
+                    <span>높음 (50%+)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded bg-violet-300" />
+                    <span>보통 (30-50%)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded bg-violet-100" />
+                    <span>낮음 (15-30%)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200" />
+                    <span>관련 없음</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {/* Network Stats */}
+          {networkData && !hasActiveSearch && (
+            <Card>
+              <CardContent className="pt-4">
+                <h3 className="font-medium mb-3">네트워크 현황</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">전체 인원</span>
+                    <span className="font-medium">{networkData.stats.totalNodes}명</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">연결 수</span>
+                    <span className="font-medium">{networkData.stats.totalEdges}개</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">평균 유사도</span>
+                    <span className="font-medium font-mono">
+                      {Math.round(networkData.stats.averageSimilarity * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Legend */}
+          <Card>
+            <CardContent className="pt-4">
+              <h3 className="font-medium mb-3">범례</h3>
+              <div className="space-y-3 text-sm">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">노드 위치</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-primary" />
+                    <span>중앙: 나</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-violet-400" />
+                    <span>가까움: 유사도 높음</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-gray-300" />
+                    <span>멀리: 유사도 낮음</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">연결선</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-0.5 bg-violet-500" />
+                    <span>강한 연결 (30%+)</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </div>
 
       {/* Profile Modal */}
       <ProfileModal
@@ -606,5 +627,13 @@ export default function NetworkPage() {
         onOpenChange={setIsProfileModalOpen}
       />
     </div>
+  );
+}
+
+export default function NetworkPage() {
+  return (
+    <ReactFlowProvider>
+      <NetworkPageContent />
+    </ReactFlowProvider>
   );
 }
