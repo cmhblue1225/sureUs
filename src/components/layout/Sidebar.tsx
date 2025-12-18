@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils/cn";
 import {
   LayoutDashboard,
   User,
-  Search,
   Network,
   Calendar,
   MessageSquare,
@@ -27,7 +26,6 @@ import { checkIsAdmin } from "@/lib/utils/auth";
 const navigation = [
   { name: "대시보드", href: "/dashboard", icon: LayoutDashboard },
   { name: "내 프로필", href: "/profile", icon: User },
-  { name: "검색", href: "/search", icon: Search },
   { name: "네트워크", href: "/network", icon: Network },
   { name: "캘린더", href: "/calendar", icon: Calendar },
   { name: "게시판", href: "/board", icon: MessageSquare },
