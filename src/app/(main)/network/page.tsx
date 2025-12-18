@@ -77,11 +77,18 @@ interface RadialNetworkResult {
 
 // SemanticSearchNode를 사용 (이미 relevanceScore, matchedFields 포함)
 
-// 캔버스 크기
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 800;
+// 캔버스 크기 (노드 수에 따라 넓게)
+const CANVAS_WIDTH = 1600;
+const CANVAS_HEIGHT = 1200;
 const CENTER_X = CANVAS_WIDTH / 2;
 const CENTER_Y = CANVAS_HEIGHT / 2;
+
+// 레이아웃 옵션
+const LAYOUT_OPTIONS = {
+  minRadius: 200,
+  maxRadius: 700,
+  nodeSize: 180, // 노드 크기 + 여백
+};
 
 function NetworkPageContent() {
   const [loading, setLoading] = useState(true);
@@ -219,8 +226,9 @@ function NetworkPageContent() {
       centerX: CENTER_X,
       centerY: CENTER_Y,
       currentUserId: networkData.currentUserId,
-      minRadius: 150,
-      maxRadius: 450,
+      minRadius: LAYOUT_OPTIONS.minRadius,
+      maxRadius: LAYOUT_OPTIONS.maxRadius,
+      nodeSize: LAYOUT_OPTIONS.nodeSize,
     });
 
     // React Flow 노드 생성
@@ -295,8 +303,9 @@ function NetworkPageContent() {
           centerX: CENTER_X,
           centerY: CENTER_Y,
           currentUserId: networkData?.currentUserId || "",
-          minRadius: 150,
-          maxRadius: 450,
+          minRadius: LAYOUT_OPTIONS.minRadius,
+          maxRadius: LAYOUT_OPTIONS.maxRadius,
+          nodeSize: LAYOUT_OPTIONS.nodeSize,
         });
 
         // 노드 데이터 업데이트 (검색 상태 해제)
@@ -338,8 +347,9 @@ function NetworkPageContent() {
         centerX: CENTER_X,
         centerY: CENTER_Y,
         currentUserId: results.currentUserId,
-        minRadius: 120,
-        maxRadius: 500,
+        minRadius: LAYOUT_OPTIONS.minRadius,
+        maxRadius: LAYOUT_OPTIONS.maxRadius,
+        nodeSize: LAYOUT_OPTIONS.nodeSize,
       });
 
       // 노드 데이터 업데이트
