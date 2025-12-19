@@ -3,8 +3,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { generateEmbedding } from "@/lib/openai/embeddings";
 import {
   expandSemanticQuery,
-  createExactSearchQuery,
   expandedQueryToSearchText,
+  analyzeQuery,
   type ExpandedQuery,
 } from "@/lib/anthropic/queryExpansion";
 import {
@@ -66,10 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { query, searchMode = "exact" } = body;
-
-    // searchMode 검증: "exact" 또는 "broad"
-    const validSearchMode = searchMode === "broad" ? "broad" : "exact";
+    const { query } = body;
 
     if (!query || typeof query !== "string") {
       return NextResponse.json(
@@ -95,46 +92,45 @@ export async function POST(request: NextRequest) {
 
     const startTime = Date.now();
 
-    // 1. 검색 모드에 따라 쿼리 확장
+    // 1. 쿼리 분석 (전략 자동 결정)
+    const queryAnalysis = analyzeQuery(trimmedQuery);
+
+    // 2. Claude로 쿼리 확장 (자동화된 단일 모드)
     let expandedQuery: ExpandedQuery | null = null;
     let usedFallback = false;
 
-    if (validSearchMode === "exact") {
-      // 정확 모드: LLM 확장 없이 직접 키워드 매칭
-      expandedQuery = createExactSearchQuery(trimmedQuery);
-    } else {
-      // 넓게 모드: Claude로 쿼리 확장
-      try {
-        expandedQuery = await expandSemanticQuery(trimmedQuery);
-        if (expandedQuery && expandedQuery.confidence < 0.5) {
-          usedFallback = true;
-        }
-      } catch (error) {
-        console.error("Query expansion error:", error);
+    try {
+      expandedQuery = await expandSemanticQuery(trimmedQuery);
+      if (expandedQuery && expandedQuery.confidence < 0.5) {
         usedFallback = true;
       }
-
-      if (!expandedQuery) {
-        // 폴백: 기본 확장
-        const keywords = trimmedQuery.split(/\s+/).filter(k => k.length > 1);
-        expandedQuery = {
-          originalQuery: trimmedQuery,
-          expandedDescription: trimmedQuery,
-          suggestedMbtiTypes: [],
-          suggestedHobbyTags: [],
-          searchKeywords: keywords,
-          profileFieldHints: {
-            collaborationStyle: keywords,
-            strengths: keywords,
-            preferredPeopleType: keywords,
-          },
-          confidence: 0.3,
-        };
-        usedFallback = true;
-      }
+    } catch (error) {
+      console.error("Query expansion error:", error);
+      usedFallback = true;
     }
 
-    // 2. 확장된 쿼리로 임베딩 생성
+    if (!expandedQuery) {
+      // 폴백: 기본 확장
+      const keywords = trimmedQuery.split(/\s+/).filter(k => k.length > 1);
+      expandedQuery = {
+        originalQuery: trimmedQuery,
+        expandedDescription: trimmedQuery,
+        suggestedMbtiTypes: [],
+        suggestedHobbyTags: [],
+        searchKeywords: keywords,
+        profileFieldHints: {
+          collaborationStyle: keywords,
+          strengths: keywords,
+          preferredPeopleType: keywords,
+        },
+        confidence: 0.3,
+        queryIntent: 'general',
+        intentConfidence: 0.5,
+      };
+      usedFallback = true;
+    }
+
+    // 3. 확장된 쿼리로 임베딩 생성
     const searchText = expandedQueryToSearchText(expandedQuery);
     let queryEmbedding: number[];
 
@@ -213,7 +209,7 @@ export async function POST(request: NextRequest) {
             totalResults: 0,
             searchTime: Date.now() - startTime,
             usedFallback,
-            searchMode: validSearchMode,
+            searchStrategy: queryAnalysis.suggestedStrategy,
           },
         },
       });
@@ -287,12 +283,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // 5. 하이브리드 검색 수행
+    // 5. 하이브리드 검색 수행 (쿼리 전략 적용)
     const searchResults = performSemanticSearch(candidates, {
       expandedQuery,
       queryEmbedding,
       limit: 100, // 모든 후보 포함
       minScore: 0, // 모든 점수 포함
+      searchStrategy: queryAnalysis.suggestedStrategy,
     });
 
     // 6. 검색 결과 맵 생성 (userId -> score, matchedFields)
@@ -369,7 +366,7 @@ export async function POST(request: NextRequest) {
           totalNodes: allNodes.length,
           searchTime,
           usedFallback,
-          searchMode: validSearchMode,
+          searchStrategy: queryAnalysis.suggestedStrategy,
         },
       },
     });

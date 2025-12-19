@@ -37,6 +37,12 @@ export default async function ProfileEditPage() {
         .eq("profile_id", profile.id);
 
       initialData = {
+        // 새로운 조직 구조 필드
+        orgLevel1: profile.org_level1 || undefined,
+        orgLevel2: profile.org_level2 || undefined,
+        orgLevel3: profile.org_level3 || undefined,
+        jobPosition: profile.job_position || undefined,
+        // 하위 호환성 필드
         department: profile.department,
         jobRole: profile.job_role,
         officeLocation: profile.office_location,
@@ -45,6 +51,19 @@ export default async function ProfileEditPage() {
         collaborationStyle: profile.collaboration_style || undefined,
         strengths: profile.strengths || undefined,
         preferredPeopleType: profile.preferred_people_type || undefined,
+        // 새 필드
+        livingLocation: profile.living_location || undefined,
+        hometown: profile.hometown || undefined,
+        education: profile.education || undefined,
+        workDescription: profile.work_description || undefined,
+        techStack: profile.tech_stack || undefined,
+        favoriteFood: profile.favorite_food || undefined,
+        ageRange: profile.age_range || undefined,
+        interests: profile.interests || undefined,
+        careerGoals: profile.career_goals || undefined,
+        certifications: profile.certifications || undefined,
+        languages: profile.languages || undefined,
+        // 설정
         visibilitySettings: profile.visibility_settings as unknown as VisibilitySettings | undefined,
       };
     }

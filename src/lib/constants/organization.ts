@@ -371,3 +371,44 @@ export const ORG_SYNERGY_MAP: Record<string, string[]> = {
 };
 
 export type OrgLevel1 = (typeof ORG_LEVEL1_OPTIONS)[number];
+
+/**
+ * 조직명(팀, 실, 연구소)에서 상위 조직 찾기
+ * 기존 department 값에서 org_level1/2/3을 추출하는 용도
+ */
+export interface OrgHierarchy {
+  level1: string;
+  level2?: string;
+  level3?: string;
+}
+
+export function findOrgHierarchyByName(name: string): OrgHierarchy | null {
+  if (!name) return null;
+
+  // Level 1 (연구소/센터/본부)에서 먼저 찾기
+  for (const org of ORGANIZATION_STRUCTURE) {
+    if (org.name === name) {
+      return { level1: org.name };
+    }
+
+    // Level 2 (실)에서 찾기
+    if (org.children) {
+      for (const level2 of org.children) {
+        if (level2.name === name) {
+          return { level1: org.name, level2: level2.name };
+        }
+
+        // Level 3 (팀)에서 찾기
+        if (level2.children) {
+          for (const level3 of level2.children) {
+            if (level3.name === name) {
+              return { level1: org.name, level2: level2.name, level3: level3.name };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}

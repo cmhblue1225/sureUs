@@ -26,6 +26,7 @@ import {
   hasLevel2,
   hasLevel3,
   getFullOrgPath,
+  findOrgHierarchyByName,
 } from "@/lib/constants/organization";
 import { JOB_POSITIONS } from "@/lib/constants/jobPositions";
 import { OFFICE_LOCATIONS } from "@/lib/constants/locations";
@@ -44,11 +45,43 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
   const [error, setError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentAvatarUrl || null);
 
-  // Form state - 조직 정보 (새로운 구조)
-  const [orgLevel1, setOrgLevel1] = useState(initialData?.orgLevel1 || "");
-  const [orgLevel2, setOrgLevel2] = useState(initialData?.orgLevel2 || "");
-  const [orgLevel3, setOrgLevel3] = useState(initialData?.orgLevel3 || "");
-  const [jobPosition, setJobPosition] = useState(initialData?.jobPosition || "");
+  // Form state - 조직 정보 (새로운 구조, 기존 데이터 폴백 지원)
+  // 기존 department 값에서 조직 계층 구조 추출
+  const getInitialOrgLevels = () => {
+    // 이미 새 구조가 있으면 그대로 사용
+    if (initialData?.orgLevel1) {
+      return {
+        level1: initialData.orgLevel1,
+        level2: initialData.orgLevel2 || "",
+        level3: initialData.orgLevel3 || "",
+      };
+    }
+    // 기존 department에서 조직 계층 찾기 (팀/실/연구소 이름에서 추출)
+    if (initialData?.department) {
+      const hierarchy = findOrgHierarchyByName(initialData.department);
+      if (hierarchy) {
+        return {
+          level1: hierarchy.level1,
+          level2: hierarchy.level2 || "",
+          level3: hierarchy.level3 || "",
+        };
+      }
+    }
+    return { level1: "", level2: "", level3: "" };
+  };
+  const initialOrgLevels = getInitialOrgLevels();
+  const [orgLevel1, setOrgLevel1] = useState(initialOrgLevels.level1);
+  const [orgLevel2, setOrgLevel2] = useState(initialOrgLevels.level2);
+  const [orgLevel3, setOrgLevel3] = useState(initialOrgLevels.level3);
+  // 기존 jobRole 값이 jobPosition 옵션에 있으면 사용
+  const getInitialJobPosition = () => {
+    if (initialData?.jobPosition) return initialData.jobPosition;
+    if (initialData?.jobRole && (JOB_POSITIONS as readonly string[]).includes(initialData.jobRole)) {
+      return initialData.jobRole;
+    }
+    return "";
+  };
+  const [jobPosition, setJobPosition] = useState(getInitialJobPosition());
   const [officeLocation, setOfficeLocation] = useState(initialData?.officeLocation || "");
   const [mbti, setMbti] = useState(initialData?.mbti || "");
 

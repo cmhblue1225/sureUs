@@ -1,8 +1,76 @@
 # sureNet 개발 진행 현황
 
-> 마지막 업데이트: 2025-12-18
+> 마지막 업데이트: 2025-12-19
 
-## 현재 Phase: 21 완료 (기수 시스템)
+## 현재 Phase: 22 완료 (네트워크 검색 고도화)
+
+---
+
+## Phase 22: 네트워크 검색 고도화
+**상태: 완료**
+
+### 목표
+네트워크 페이지의 의미 검색 알고리즘 정확도 향상 및 UI/UX 개선
+
+### 22-1. 검색 알고리즘 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 쿼리 의도 분류 시스템 | ✅ 완료 | `src/lib/anthropic/queryExpansion.ts` |
+| 의도별 동적 가중치 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 확장 필드 검색 지원 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+| 한글 유의어 매칭 | ✅ 완료 | `src/lib/matching/koreanMatcher.ts` (신규) |
+| MBTI/태그 미언급 시 대체 점수 | ✅ 완료 | `src/lib/matching/semanticMatcher.ts` |
+
+### 22-2. 시각적 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 노드 관련도 기반 스타일링 | ✅ 완료 | `src/components/graph/EnhancedUserNode.tsx` |
+| 검색 결과 상세 패널 (상위 5명) | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 범례 접기 기능 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+
+### 22-3. 동작/UX 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 상태 동기화 최적화 (useTransition) | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| Staggered 애니메이션 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 검색 로딩 인디케이터 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 결과 없음 UI | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+
+### 22-4. 검색 결과 영역 시각화
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 검색 결과 티어별 그룹화 UI | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 동심원 영역 경계 (ZoneBoundaries) | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 관련도 기반 방사형 배치 강화 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 뷰포트 연동 (pan/zoom 동기화) | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+| 영역 페이드인 애니메이션 | ✅ 완료 | `src/app/globals.css` |
+
+### 기능 요약
+- **쿼리 의도 분류**: personality, skill, hobby, mbti, department, general 6가지 의도 자동 분류
+- **의도별 가중치**: 검색 의도에 따라 벡터유사도, 프로필필드, MBTI, 태그, 텍스트 가중치 동적 조정
+- **한글 유의어**: "개발자" → "developer, 프로그래머, 엔지니어" 등 자동 확장
+- **노드 시각화**: 관련도에 따라 테두리 두께(2-5px), 색상(gray→violet), 크기(0.95-1.1x) 동적 변화
+- **Staggered 애니메이션**: 관련도 높은 노드부터 순차적으로 등장
+- **검색 UX**: 검색 중 로딩 표시, 결과 없을 시 안내 UI 제공
+- **검색 결과 티어 분류**: 최고 매칭(70%+), 높은 매칭(50-69%), 관련 있음(30-49%) 3단계 그룹화
+- **동심원 영역 경계**: 검색 시 캔버스에 관련도별 영역을 시각적으로 표시
+- **방사형 노드 배치**: 관련도에 따라 중심(현재 사용자) 가까이 또는 외곽에 노드 배치
+  - 공식: `targetRadius = 150 + (1 - relevance) * 300`
+  - 70%: 240px, 50%: 300px, 30%: 360px
+
+### 신규 생성 파일
+| 파일 | 용도 |
+|------|------|
+| `src/lib/matching/koreanMatcher.ts` | 한글 유의어 사전 및 매칭 함수 |
+
+### 수정된 파일
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/lib/anthropic/queryExpansion.ts` | QueryIntent 타입, 의도 분류 로직 추가 |
+| `src/lib/matching/semanticMatcher.ts` | 의도별 가중치, 확장 필드 검색, 유의어 매칭 통합 |
+| `src/components/graph/EnhancedUserNode.tsx` | 관련도 기반 동적 스타일링 |
+| `src/app/(main)/network/page.tsx` | 상세 패널, 범례 접기, stagger 애니메이션, 로딩/결과없음 UI |
+| `src/app/api/graph/semantic-search/route.ts` | queryIntent, intentConfidence 필드 추가 |
 
 ---
 
@@ -751,6 +819,7 @@ npx tsx src/scripts/regenerate-embeddings.ts
 | 2025-12-18 | 19 | 비밀번호 관리 (초기 비밀번호 통일, 비밀번호 변경 기능) |
 | 2025-12-18 | 20 | 신입사원 등록 개선 (사번 자동/수동 선택, CSV 템플릿 개선) |
 | 2025-12-18 | 21 | 기수 시스템 구현 (기수별 데이터 완전 격리, 관리자 기수 선택, 기수 관리 UI) |
+| 2025-12-19 | 22 | 네트워크 검색 고도화 (쿼리 의도 분류, 한글 유의어, 동적 가중치, stagger 애니메이션, 개선된 UI) |
 
 ---
 
