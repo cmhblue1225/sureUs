@@ -154,14 +154,15 @@ const TIER_CONFIG: Record<TierKey, {
 };
 
 // 검색 영역 경계 컴포넌트 - 뷰포트 변환 적용
-// 반경은 forceLayout.ts의 공식과 일치: targetRadius = 100 + (1 - relevance) * 600
-// 70% (0.7): 100 + 0.3 * 600 = 280px → 경계 300px
-// 50% (0.5): 100 + 0.5 * 600 = 400px → 경계 450px
-// 30% (0.3): 100 + 0.7 * 600 = 520px → 경계 600px
+// 반경은 forceLayout.ts SEARCH_LAYOUT_CONFIG와 동기화
+// 공식: targetRadius = 150 + (1 - relevance) * 430
+// 70% (0.7): 150 + 0.3 * 430 = 279px
+// 50% (0.5): 150 + 0.5 * 430 = 365px
+// 30% (0.3): 150 + 0.7 * 430 = 451px
 const ZONE_RADII = {
-  veryHigh: 300,  // 70%+ 영역 경계
-  high: 450,      // 50-69% 영역 경계
-  medium: 600,    // 30-49% 영역 경계
+  veryHigh: 279,  // 70%+ 영역 경계
+  high: 365,      // 50-69% 영역 경계
+  medium: 451,    // 30-49% 영역 경계
 };
 
 function ZoneBoundaries({ centerX, centerY }: { centerX: number; centerY: number }) {
@@ -354,6 +355,18 @@ function NetworkPageContent() {
       animationRef.current.startPositions = startPositions;
       animationRef.current.targetPositions = targetPositions;
       animationRef.current.startTime = null;
+
+      // 디버깅: 애니메이션 대상 위치 확인 (시각적 중심 기준)
+      console.log('[animateToPositions] targetPositions 설정 (시각적 중심 기준):');
+      targetPositions.forEach((pos, nodeId) => {
+        // 시각적 중심 계산: top-left에서 오프셋 제거
+        const visualCenterX = pos.x - CURRENT_USER_OFFSET_X;
+        const visualCenterY = pos.y - CURRENT_USER_OFFSET_Y;
+        const dx = visualCenterX - CENTER_X;
+        const dy = visualCenterY - CENTER_Y;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        console.log(`  ${nodeId.substring(0, 8)}... → top-left=(${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}), 시각적중심거리=${distanceFromCenter.toFixed(0)}px`);
+      });
 
       // stagger 시 각 노드별 시작 딜레이 계산
       const nodeDelays = new Map<string, number>();
@@ -559,8 +572,40 @@ function NetworkPageContent() {
         similarityScore: n.relevanceScore,
       }));
 
+      // 디버깅: API에서 받은 원본 관련도 vs forceNodes 관련도 비교
+      console.log('[handleSearchResults] 원본 searchResults vs forceNodes 비교:');
+      sortedRelevantNodes.forEach((orig) => {
+        if (!orig.isCurrentUser) {
+          const forceNode = forceNodes.find(fn => fn.id === orig.id);
+          console.log(`  ${orig.name}: 원본=${(orig.relevanceScore ?? 0).toFixed(4)} → forceNode=${(forceNode?.relevanceScore ?? 0).toFixed(4)}`);
+        }
+      });
+
+      // 디버깅: API에서 받은 관련도 값 확인
+      console.log('[handleSearchResults] forceNodes 생성:');
+      forceNodes.forEach((n, idx) => {
+        if (!n.isCurrentUser) {
+          const originalNode = sortedRelevantNodes.find(sn => sn.id === n.id);
+          console.log(`  ${idx}. ${originalNode?.name || n.id.substring(0, 8)} - relevanceScore=${n.relevanceScore}`);
+        }
+      });
+
       // 검색 결과 기반 Force 레이아웃 실행
       const positions = runSearchBasedForceLayout(forceNodes, [], FORCE_LAYOUT_OPTIONS);
+
+      // 디버깅: 반환된 positions 확인 (시각적 중심 기준)
+      // 노드 시각적 중심 = top-left - OFFSET (오프셋이 음수이므로 빼면 실제 중심)
+      console.log('[handleSearchResults] 계산된 positions (시각적 중심 기준):');
+      positions.forEach((pos, nodeId) => {
+        const originalNode = sortedRelevantNodes.find(sn => sn.id === nodeId);
+        // 시각적 중심 계산: top-left에서 오프셋 제거
+        const visualCenterX = pos.x - CURRENT_USER_OFFSET_X; // pos.x + 90
+        const visualCenterY = pos.y - CURRENT_USER_OFFSET_Y; // pos.y + 55
+        const dx = visualCenterX - CENTER_X;
+        const dy = visualCenterY - CENTER_Y;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        console.log(`  ${originalNode?.name || nodeId.substring(0, 8)} → top-left=(${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}), 시각적중심거리=${distanceFromCenter.toFixed(0)}px`);
+      });
 
       // 현재 사용자는 무조건 정중앙에 배치 (오프셋 적용)
       const currentUserNode = sortedRelevantNodes.find(n => n.isCurrentUser);
@@ -571,38 +616,53 @@ function NetworkPageContent() {
         });
       }
 
-      // 노드 데이터 업데이트 (관련 없는 노드는 숨김) - startTransition으로 우선순위 낮춤
-      startTransition(() => {
-        setNodes((prevNodes) =>
-          prevNodes.map((node) => {
-            const searchResult = resultMap.get(node.id);
-            const relevanceScore = searchResult?.relevanceScore ?? 0;
-            const isCurrentUser = (node.data as EnhancedUserNodeData).isCurrentUser;
-            const isVisible = isCurrentUser || relevanceScore >= SEARCH_RELEVANCE_THRESHOLD;
+      // 노드 데이터와 위치를 함께 업데이트 (동기화 문제 방지)
+      // 먼저 노드 데이터와 초기 위치를 한번에 설정
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          const searchResult = resultMap.get(node.id);
+          const relevanceScore = searchResult?.relevanceScore ?? 0;
+          const isCurrentUser = (node.data as EnhancedUserNodeData).isCurrentUser;
+          const isVisible = isCurrentUser || relevanceScore >= SEARCH_RELEVANCE_THRESHOLD;
 
-            return {
-              ...node,
-              hidden: !isVisible, // 관련도 낮은 노드는 숨김
-              data: {
-                ...node.data,
-                hasActiveSearch: true,
-                relevanceScore,
-                matchedFields: searchResult?.matchedFields,
-              },
-            };
-          })
-        );
+          // 검색 결과에 있는 노드는 새 위치로 설정
+          const newPosition = positions.get(node.id);
+
+          return {
+            ...node,
+            hidden: !isVisible,
+            position: newPosition ?? node.position, // 새 위치가 있으면 즉시 적용
+            data: {
+              ...node.data,
+              hasActiveSearch: true,
+              relevanceScore,
+              matchedFields: searchResult?.matchedFields,
+            },
+          };
+        })
+      );
+
+      // currentPositionsRef도 즉시 업데이트
+      positions.forEach((pos, nodeId) => {
+        currentPositionsRef.current.set(nodeId, pos);
       });
 
-      // staggered 애니메이션 - 관련도 높은 순으로 노드 등장
-      const nodeOrder = sortedRelevantNodes.map((n) => n.id);
-      animateToPositions(positions, 600, {
-        stagger: true,
-        staggerDelay: 40,
-        nodeOrder,
+      // 디버깅: 최종 위치 적용 확인
+      console.log('[handleSearchResults] 노드 위치 즉시 적용 완료');
+      positions.forEach((pos, nodeId) => {
+        const node = sortedRelevantNodes.find(n => n.id === nodeId);
+        const visualCenterX = pos.x - CURRENT_USER_OFFSET_X;
+        const visualCenterY = pos.y - CURRENT_USER_OFFSET_Y;
+        const dx = visualCenterX - CENTER_X;
+        const dy = visualCenterY - CENTER_Y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        console.log(`  ${node?.name || nodeId.substring(0,8)} → 최종위치 (${pos.x}, ${pos.y}), 시각적중심거리=${dist.toFixed(0)}px`);
       });
+
+      // 부드러운 애니메이션을 위해 fitView 호출 (선택적)
+      setTimeout(() => fitView({ padding: 0.3, duration: 300 }), 100);
     },
-    [networkData, setNodes, animateToPositions, startTransition]
+    [networkData, setNodes, fitView]
   );
 
   // 검색 초기화

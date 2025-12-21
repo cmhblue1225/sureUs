@@ -55,6 +55,14 @@ export const DEFAULT_FORCE_CONFIG: ForceLayoutConfig = {
   iterations: 150,
 };
 
+// 검색 결과 방사형 배치 설정
+export const SEARCH_LAYOUT_CONFIG = {
+  MIN_RADIUS: 150,     // 최소 반경 (관련도 100%)
+  MAX_RADIUS: 580,     // 최대 반경 (관련도 30%)
+  get RADIUS_RANGE() { return this.MAX_RADIUS - this.MIN_RADIUS; }, // 430px
+  NODE_COLLISION_RADIUS: 90,  // 노드 간 최소 거리
+};
+
 // 현재 사용자 노드 오프셋 (노드 카드 크기의 절반, React Flow는 좌상단 기준 배치)
 // 노드 카드 크기: 약 180px x 110px → 중심 맞추려면 (-90, -55) 오프셋
 const CURRENT_USER_OFFSET_X = -90;
@@ -180,7 +188,7 @@ export function runForceSimulation(
   const centerX = cfg.width / 2;
   const centerY = cfg.height / 2;
 
-  // 위치 맵 생성 - 현재 사용자는 반드시 정중앙에 배치 (오프셋 적용)
+  // 위치 맵 생성 - 모든 노드에 오프셋 적용 (React Flow는 top-left 기준이므로 시각적 중심 보정)
   const positions = new Map<string, NodePosition>();
   nodesCopy.forEach((node) => {
     if (node.isCurrentUser) {
@@ -190,9 +198,10 @@ export function runForceSimulation(
         y: centerY + CURRENT_USER_OFFSET_Y,
       });
     } else {
+      // 다른 노드들도 동일한 오프셋 적용 (시각적 중심 일관성 유지)
       positions.set(node.id, {
-        x: node.x ?? centerX,
-        y: node.y ?? centerY,
+        x: (node.x ?? centerX) + CURRENT_USER_OFFSET_X,
+        y: (node.y ?? centerY) + CURRENT_USER_OFFSET_Y,
       });
     }
   });
@@ -201,9 +210,10 @@ export function runForceSimulation(
 }
 
 /**
- * 검색 결과 기반 레이아웃 (결정적 방식)
- * - 관련도에 따라 정확한 반경에 배치
- * - Force 시뮬레이션 없이 직접 계산하여 일관성 보장
+ * 검색 결과 기반 레이아웃 (연속적 방사형)
+ * - 관련도에 따라 연속적으로 반경 결정 (티어 X)
+ * - 공식: targetRadius = MIN_RADIUS + (1 - relevance) * RADIUS_RANGE
+ * - 골든 앵글 기반 분산 + 충돌 방지
  */
 export function runSearchBasedForceLayout(
   nodes: ForceNode[],
@@ -214,29 +224,20 @@ export function runSearchBasedForceLayout(
   const centerX = cfg.width / 2;
   const centerY = cfg.height / 2;
 
-  // 관련도별로 노드 그룹화
+  const { MIN_RADIUS, RADIUS_RANGE, NODE_COLLISION_RADIUS } = SEARCH_LAYOUT_CONFIG;
+
   const currentUser = nodes.find(n => n.isCurrentUser);
   const otherNodes = nodes.filter(n => !n.isCurrentUser);
 
-  // 관련도순 정렬
+  // 관련도순 정렬 (높은 순)
   otherNodes.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
 
-  // 관련도 티어별로 그룹화
-  const tiers: { nodes: ForceNode[], baseRadius: number }[] = [
-    { nodes: [], baseRadius: 200 },  // 70%+ (최고 매칭) - 200px 근처
-    { nodes: [], baseRadius: 380 },  // 50-69% (높은 매칭) - 380px 근처
-    { nodes: [], baseRadius: 530 },  // 30-49% (관련 있음) - 530px 근처
-  ];
-
-  otherNodes.forEach(node => {
-    const relevance = node.relevanceScore ?? 0;
-    if (relevance >= 0.7) {
-      tiers[0].nodes.push(node);
-    } else if (relevance >= 0.5) {
-      tiers[1].nodes.push(node);
-    } else {
-      tiers[2].nodes.push(node);
-    }
+  // 디버깅: 노드별 관련도 및 계산된 반경 출력
+  console.log('[SearchLayout] 노드 배치 계산:');
+  otherNodes.forEach((node, idx) => {
+    const rel = node.relevanceScore ?? 0;
+    const radius = MIN_RADIUS + (1 - rel) * RADIUS_RANGE;
+    console.log(`  ${idx + 1}. ${node.id.substring(0, 8)}... relevance=${(rel * 100).toFixed(1)}% → radius=${radius.toFixed(0)}px`);
   });
 
   const positions = new Map<string, NodePosition>();
@@ -249,28 +250,66 @@ export function runSearchBasedForceLayout(
     });
   }
 
-  // 각 티어별로 원형 배치
-  tiers.forEach(tier => {
-    const nodeCount = tier.nodes.length;
-    if (nodeCount === 0) return;
+  // 배치된 노드 위치 추적 (충돌 방지용)
+  const placedPositions: { x: number; y: number }[] = [];
 
-    // 시작 각도를 랜덤하게 (티어마다 다르게)
-    const startAngle = Math.random() * Math.PI * 2;
-    const angleStep = (Math.PI * 2) / nodeCount;
+  // 골든 앵글 기반 분산 (피보나치 나선 - 더 균등한 분포)
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
 
-    tier.nodes.forEach((node, index) => {
-      // 같은 티어 내에서도 관련도에 따라 약간의 반경 차이
-      const relevance = node.relevanceScore ?? 0;
-      const radiusVariation = (0.5 - Math.random()) * 40; // ±20px 변동
-      const radius = tier.baseRadius + radiusVariation;
+  otherNodes.forEach((node, index) => {
+    const relevance = node.relevanceScore ?? 0;
+    // 핵심 공식: 연속적 반경 계산
+    // 95% → 171px, 70% → 279px, 50% → 365px, 30% → 451px
+    const targetRadius = MIN_RADIUS + (1 - relevance) * RADIUS_RANGE;
 
-      const angle = startAngle + angleStep * index;
+    // 초기 각도 (골든 앵글 기반)
+    let angle = GOLDEN_ANGLE * index;
+    // 중요: 시각적 중심 기준 위치 계산 후, 노드 오프셋 적용 (React Flow는 top-left 기준)
+    // 노드의 시각적 중심이 목표 반경에 위치하도록 오프셋 적용
+    let finalX = centerX + targetRadius * Math.cos(angle) + CURRENT_USER_OFFSET_X;
+    let finalY = centerY + targetRadius * Math.sin(angle) + CURRENT_USER_OFFSET_Y;
 
-      positions.set(node.id, {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
+    // 충돌 감지 및 회피
+    let attempts = 0;
+    const maxAttempts = 36; // 10도씩 36번 = 360도
+
+    while (attempts < maxAttempts) {
+      const collision = placedPositions.some(placed => {
+        const dx = finalX - placed.x;
+        const dy = finalY - placed.y;
+        return Math.sqrt(dx * dx + dy * dy) < NODE_COLLISION_RADIUS;
       });
-    });
+
+      if (!collision) break;
+
+      // 각도 조정하여 빈 공간 탐색
+      angle += (Math.PI * 2) / maxAttempts;
+      finalX = centerX + targetRadius * Math.cos(angle) + CURRENT_USER_OFFSET_X;
+      finalY = centerY + targetRadius * Math.sin(angle) + CURRENT_USER_OFFSET_Y;
+      attempts++;
+    }
+
+    positions.set(node.id, { x: finalX, y: finalY });
+    placedPositions.push({ x: finalX, y: finalY });
+
+    // 디버깅: 최종 위치 확인 (시각적 중심 기준)
+    // 노드 시각적 중심 = top-left + (90, 55), 캔버스 중심 = (centerX, centerY)
+    const visualCenterX = finalX - CURRENT_USER_OFFSET_X; // finalX + 90
+    const visualCenterY = finalY - CURRENT_USER_OFFSET_Y; // finalY + 55
+    const dx = visualCenterX - centerX;
+    const dy = visualCenterY - centerY;
+    const actualDistance = Math.sqrt(dx * dx + dy * dy);
+    console.log(`  [배치완료] ${node.id.substring(0, 8)}... → 최종위치 (${finalX.toFixed(0)}, ${finalY.toFixed(0)}), 시각적중심거리=${actualDistance.toFixed(0)}px, 목표반경=${targetRadius.toFixed(0)}px`);
+  });
+
+  console.log('[SearchLayout] 최종 positions 맵 (시각적 중심 거리 기준):');
+  positions.forEach((pos, nodeId) => {
+    const visualCenterX = pos.x - CURRENT_USER_OFFSET_X;
+    const visualCenterY = pos.y - CURRENT_USER_OFFSET_Y;
+    const dx = visualCenterX - centerX;
+    const dy = visualCenterY - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    console.log(`  ${nodeId.substring(0, 8)}... → (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}), 시각적중심거리=${dist.toFixed(0)}px`);
   });
 
   return positions;

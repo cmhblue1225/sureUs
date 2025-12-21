@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Users, Sparkles, Network } from "lucide-react";
+import { ArrowRight, MessageCircle, Sparkles, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   introTextVariants,
@@ -183,19 +183,19 @@ export function StepIntro({ userName, onNext, onStartMusic }: StepIntroProps) {
                 </p>
               </motion.div>
 
-              {/* 기능 3: 동호회 커뮤니티 */}
+              {/* 기능 3: 1:1 메시지 */}
               <motion.div
                 variants={featureCardVariants}
                 className="bg-white/10 backdrop-blur-sm rounded-2xl lg:rounded-3xl p-5 lg:p-8 border border-white/20"
               >
                 <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
+                  <MessageCircle className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
                 </div>
                 <h3 className="text-white font-semibold text-base lg:text-xl mb-2">
-                  동호회 커뮤니티
+                  1:1 메시지
                 </h3>
                 <p className="text-white/70 text-sm lg:text-base">
-                  관심사가 같은 동료들과 모임을 만들어요
+                  관심 있는 동료에게 바로 연락할 수 있어요
                 </p>
               </motion.div>
             </motion.div>

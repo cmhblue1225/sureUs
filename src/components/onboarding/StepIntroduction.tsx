@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, SkipForward, Handshake, Star, Users, Target } from "lucide-react";
+import { ArrowLeft, Check, Handshake, Star, Users, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LLMAssistButton } from "@/components/profile/LLMAssistButton";
@@ -176,36 +176,19 @@ export function StepIntroduction({
           </Button>
         </motion.div>
 
-        <div className="flex gap-2">
-          <motion.div
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
+        <motion.div
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+        >
+          <Button
+            onClick={onNext}
+            className="bg-white text-primary hover:bg-white/90 gap-2 h-11 px-8 rounded-full"
           >
-            <Button
-              onClick={onSkip}
-              variant="ghost"
-              className="text-white/70 hover:bg-white/10 gap-1 h-11 px-4"
-            >
-              건너뛰기
-              <SkipForward className="w-4 h-4" />
-            </Button>
-          </motion.div>
-
-          <motion.div
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Button
-              onClick={onNext}
-              className="bg-white text-primary hover:bg-white/90 gap-2 h-11 px-8 rounded-full"
-            >
-              {hasAnyValue ? "완료하기" : "건너뛰고 완료"}
-              <Check className="w-4 h-4" />
-            </Button>
-          </motion.div>
-        </div>
+            완료하기
+            <Check className="w-4 h-4" />
+          </Button>
+        </motion.div>
       </motion.div>
     </motion.div>
   );

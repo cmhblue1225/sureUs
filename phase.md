@@ -1,8 +1,58 @@
 # sureNet 개발 진행 현황
 
-> 마지막 업데이트: 2025-12-19
+> 마지막 업데이트: 2025-12-21
 
-## 현재 Phase: 22 완료 (네트워크 검색 고도화)
+## 현재 Phase: 23 완료 (네트워크 노드 배치 개선)
+
+---
+
+## Phase 23: 네트워크 노드 배치 개선
+**상태: 완료**
+
+### 목표
+검색 결과에서 관련도(relevanceScore)에 따라 노드가 연속적으로 배치되도록 개선
+- 관련도 높음 → 중심에 가깝게
+- 관련도 낮음 → 중심에서 멀리
+
+### 23-1. 노드 배치 알고리즘 개선
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| SEARCH_LAYOUT_CONFIG 상수 추가 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| runSearchBasedForceLayout 연속적 반경 계산 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 골든 앵글 기반 분산 배치 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 노드 충돌 방지 로직 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+
+### 23-2. Zone 경계 동기화
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| ZONE_RADII 상수 업데이트 | ✅ 완료 | `src/app/(main)/network/page.tsx` |
+
+### 23-3. 노드 오프셋 일관성 수정 (2025-12-21 추가)
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 모든 노드에 동일한 오프셋 적용 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 검색 레이아웃 오프셋 적용 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 초기 Force 레이아웃 오프셋 적용 | ✅ 완료 | `src/lib/graph/forceLayout.ts` |
+| 디버그 로깅 추가 | ✅ 완료 | `src/lib/graph/forceLayout.ts`, `network/page.tsx` |
+
+**버그 원인**: React Flow는 노드를 top-left 기준으로 배치하는데, 현재 사용자 노드만 오프셋(-90, -55)이 적용되고 다른 노드들은 적용되지 않아 시각적 중심 거리가 불일치
+**수정 내용**: 모든 노드에 동일한 오프셋을 적용하여 시각적 중심 기준으로 정확한 거리 배치
+
+### 기능 요약
+- **연속적 반경 공식**: `targetRadius = 150 + (1 - relevance) * 430`
+  - 95% → 171px (중심 가까이)
+  - 70% → 279px
+  - 50% → 365px
+  - 30% → 451px (외곽)
+- **골든 앵글 분산**: 피보나치 나선 기반으로 노드가 겹치지 않게 균등 분산
+- **충돌 방지**: 노드 간 최소 거리 90px 유지
+- **시각적 중심 일관성**: 모든 노드에 동일한 오프셋 적용하여 정확한 거리 배치
+
+### 수정된 파일
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/lib/graph/forceLayout.ts` | SEARCH_LAYOUT_CONFIG 추가, 노드 오프셋 일관성 수정, 디버그 로깅 추가 |
+| `src/app/(main)/network/page.tsx` | ZONE_RADII 상수 동기화, 디버그 로깅 추가 |
 
 ---
 

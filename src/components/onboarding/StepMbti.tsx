@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, SkipForward } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MbtiCard } from "./MbtiCard";
 import { containerVariants, itemVariants, buttonVariants } from "@/lib/animations";
@@ -100,36 +100,19 @@ export function StepMbti({
           </Button>
         </motion.div>
 
-        <div className="flex gap-2">
-          <motion.div
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
+        <motion.div
+          variants={buttonVariants}
+          whileHover="hover"
+          whileTap="tap"
+        >
+          <Button
+            onClick={onNext}
+            className="bg-white text-primary hover:bg-white/90 gap-2 h-11 px-8 rounded-full"
           >
-            <Button
-              onClick={onSkip}
-              variant="ghost"
-              className="text-white/70 hover:bg-white/10 gap-1 h-11 px-4"
-            >
-              건너뛰기
-              <SkipForward className="w-4 h-4" />
-            </Button>
-          </motion.div>
-
-          <motion.div
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <Button
-              onClick={onNext}
-              className="bg-white text-primary hover:bg-white/90 gap-2 h-11 px-8 rounded-full"
-            >
-              다음
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </motion.div>
-        </div>
+            다음
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
