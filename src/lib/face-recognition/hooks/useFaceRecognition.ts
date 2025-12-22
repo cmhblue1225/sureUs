@@ -1,10 +1,14 @@
 'use client';
 
-import { RefObject, useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useRef, useState, useCallback } from 'react';
 import { RecognitionResult, TrackedFace } from '@/lib/face-recognition/types';
 import { RECOGNITION_INTERVAL } from '@/lib/face-recognition/config';
 
 type ResultsMap = Record<string, RecognitionResult>;
+
+export interface UseFaceRecognitionOptions {
+  onRecognized?: (result: RecognitionResult) => void;
+}
 
 function getArea(face: TrackedFace) {
   return face.box.width * face.box.height;
@@ -30,7 +34,8 @@ async function captureFrame(videoRef: RefObject<HTMLVideoElement | null>) {
 
 export function useFaceRecognition(
   videoRef: RefObject<HTMLVideoElement | null>,
-  faces: TrackedFace[]
+  faces: TrackedFace[],
+  options?: UseFaceRecognitionOptions
 ) {
   const [resultsById, setResultsById] = useState<ResultsMap>({});
   const [pendingIds, setPendingIds] = useState<string[]>([]);
@@ -39,6 +44,12 @@ export function useFaceRecognition(
   const facesRef = useRef<TrackedFace[]>([]);
   const pendingRef = useRef<Set<string>>(new Set());
   const lastSentRef = useRef<Map<string, number>>(new Map());
+  const onRecognizedRef = useRef(options?.onRecognized);
+
+  // 콜백 ref 업데이트
+  useEffect(() => {
+    onRecognizedRef.current = options?.onRecognized;
+  }, [options?.onRecognized]);
 
   useEffect(() => {
     facesRef.current = faces;
@@ -120,11 +131,16 @@ export function useFaceRecognition(
           throw new Error('Recognition request failed');
         }
 
-        const data = await response.json();
+        const data: RecognitionResult = await response.json();
         setResultsById(prev => ({
           ...prev,
           [targetId]: data
         }));
+
+        // 인식 성공 시 콜백 호출
+        if (data.recognized && data.user_id && onRecognizedRef.current) {
+          onRecognizedRef.current(data);
+        }
 
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
