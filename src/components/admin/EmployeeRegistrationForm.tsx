@@ -86,11 +86,6 @@ export function EmployeeRegistrationForm({
 
         const updated = { ...e, [field]: value };
 
-        // 이메일 자동 완성
-        if (field === "email" && typeof value === "string" && value && !value.includes("@")) {
-          updated.email = value + COMPANY_EMAIL_DOMAIN;
-        }
-
         // Level 1 변경 시 하위 레벨 초기화
         if (field === "orgLevel1") {
           updated.orgLevel2 = "";
@@ -108,6 +103,21 @@ export function EmployeeRegistrationForm({
         }
 
         return updated;
+      })
+    );
+  }
+
+  // 이메일 입력 완료 시 도메인 자동 추가
+  function handleEmailBlur(id: string) {
+    setEmployees(
+      employees.map((e) => {
+        if (e.id !== id) return e;
+
+        const email = e.email.trim();
+        if (email && !email.includes("@")) {
+          return { ...e, email: email + COMPANY_EMAIL_DOMAIN };
+        }
+        return e;
       })
     );
   }
@@ -320,6 +330,7 @@ export function EmployeeRegistrationForm({
                         onChange={(e) =>
                           updateEmployee(emp.id, "email", e.target.value)
                         }
+                        onBlur={() => handleEmailBlur(emp.id)}
                         placeholder={`hong${COMPANY_EMAIL_DOMAIN}`}
                       />
                     </div>
