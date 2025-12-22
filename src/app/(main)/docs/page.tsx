@@ -34,39 +34,51 @@ export const metadata: Metadata = {
 // Mermaid 다이어그램 정의
 const DIAGRAMS = {
   systemArchitecture: `flowchart TB
-    subgraph Client["클라이언트"]
-        Browser["웹 브라우저"]
-        ReactFlow["React Flow<br/>네트워크 시각화"]
-        MediaPipe["MediaPipe<br/>얼굴 감지"]
+    subgraph Client["🖥️ 클라이언트"]
+        direction TB
+        Browser["React 19 + TypeScript<br/>Tailwind CSS v4 + shadcn/ui"]
+        ReactFlow["@xyflow/react<br/>+ d3-force 레이아웃"]
+        MediaPipe["MediaPipe Face Detector<br/>브라우저 내 실시간 감지"]
     end
 
-    subgraph NextJS["Next.js 15"]
-        Pages["페이지 (SSR)"]
-        API["API Routes"]
-        MW["미들웨어<br/>인증/라우팅"]
+    subgraph NextJS["⚡ Next.js 16 (App Router)"]
+        direction TB
+        Pages["Server Components<br/>+ Client Components"]
+        API["API Routes<br/>RESTful 엔드포인트"]
+        MW["Middleware<br/>인증/라우팅 가드"]
     end
 
-    subgraph AI["AI 서비스"]
-        OpenAI["OpenAI<br/>text-embedding-3-small"]
-        Claude["Claude<br/>claude-sonnet-4-5-20250929"]
-        FaceAPI["FastAPI<br/>얼굴 인식 서버"]
+    subgraph AI["🤖 AI 서비스"]
+        direction TB
+        OpenAI["OpenAI API<br/>text-embedding-3-small<br/>1536차원 벡터"]
+        Claude["Anthropic Claude<br/>claude-sonnet-4-5-20250929<br/>쿼리 확장/분석"]
+        FaceAPI["FastAPI + face_recognition<br/>dlib 기반 얼굴 임베딩<br/>128차원 벡터"]
     end
 
-    subgraph Supabase["Supabase"]
-        Auth["인증<br/>Auth"]
-        DB["PostgreSQL<br/>+ pgvector"]
-        Storage["파일 스토리지"]
+    subgraph Supabase["🗄️ Supabase"]
+        direction TB
+        Auth["Supabase Auth<br/>JWT + RLS"]
+        DB["PostgreSQL 15<br/>+ pgvector 확장<br/>벡터 유사도 검색"]
+        Storage["Supabase Storage<br/>프로필 이미지/아바타"]
+        Realtime["Realtime<br/>실시간 구독"]
+    end
+
+    subgraph Deploy["🚀 배포"]
+        Railway["Railway<br/>Docker 컨테이너"]
     end
 
     Browser --> Pages
     ReactFlow --> API
     MediaPipe --> API
+    Pages --> MW
     MW --> Auth
     API --> OpenAI
     API --> Claude
     API --> FaceAPI
     API --> DB
-    Pages --> Storage`,
+    API --> Realtime
+    Pages --> Storage
+    NextJS --> Deploy`,
 
   semanticSearchFlow: `sequenceDiagram
     actor U as 사용자
@@ -151,6 +163,29 @@ const DIAGRAMS = {
     FR-->>API: 인식 결과 (user_id, profile)
     API-->>FE: RecognitionResult
     FE-->>U: 프로필 페이지로 이동`,
+
+  developmentTimeline: `gantt
+    title 프로젝트 개발 일정 (3주)
+    dateFormat YYYY-MM-DD
+
+    section 📋 기획
+    주제 선정           :done, planning1, 2024-12-10, 2d
+    요구사항 분석       :done, planning2, after planning1, 2d
+    아키텍처 설계       :done, planning3, after planning2, 2d
+
+    section 💻 개발
+    DB 스키마 설계      :done, dev1, 2024-12-16, 1d
+    인증/프로필 구현    :done, dev2, after dev1, 2d
+    네트워크 시각화     :done, dev3, after dev2, 2d
+    의미 검색 구현      :done, dev4, after dev3, 2d
+    얼굴 인식 통합      :done, dev5, after dev4, 2d
+
+    section 🧪 테스트
+    테스트 및 버그 수정 :done, test1, 2024-12-22, 2d
+
+    section 🎬 발표 준비
+    시연 영상 제작      :done, prep1, 2024-12-24, 2d
+    발표 자료 준비      :done, prep2, 2024-12-25, 1d`,
 };
 
 // 기술 스택 데이터
@@ -344,6 +379,27 @@ export default function DocsPage() {
             chart={DIAGRAMS.databaseERD}
           />
         </div>
+      </section>
+
+      {/* 개발 일정 */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-bold border-b pb-2">개발 일정</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              프로젝트 타임라인 (2024.12.10 ~ 12.26)
+            </CardTitle>
+            <CardDescription>
+              총 3주간의 집중 개발 기간 동안 기획부터 발표까지 전 과정을 수행했습니다
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MermaidDiagram
+              chart={DIAGRAMS.developmentTimeline}
+            />
+          </CardContent>
+        </Card>
       </section>
 
       {/* 기술 스택 */}

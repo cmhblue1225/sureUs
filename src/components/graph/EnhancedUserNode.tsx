@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, Star } from "lucide-react";
 import { DEFAULT_AVATAR_URL } from "@/components/ui/user-avatar";
 import type { ClusteredNode } from "@/lib/graph/clustering";
+import { findOrgHierarchyByName } from "@/lib/constants/organization";
 
 export interface EnhancedUserNodeData extends ClusteredNode {
   isHighlighted?: boolean;
@@ -57,6 +58,25 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
   } = data;
 
   const [isHovered, setIsHovered] = useState(false);
+
+  // department에서 루트 레벨(연구소/센터/본부)만 추출
+  const rootDepartment = useMemo(() => {
+    if (!department) return undefined;
+
+    // "A > B > C" 형식인 경우 첫 번째 부분 추출
+    if (department.includes(" > ")) {
+      return department.split(" > ")[0];
+    }
+
+    // 단일 이름인 경우 해당 조직의 상위 찾기
+    const hierarchy = findOrgHierarchyByName(department);
+    if (hierarchy) {
+      return hierarchy.level1;
+    }
+
+    // 찾지 못한 경우 원본 반환
+    return department;
+  }, [department]);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -210,9 +230,9 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
           {/* Info */}
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm truncate text-foreground">{name}</p>
-            {department && (
+            {rootDepartment && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
-                {department}
+                {rootDepartment}
               </p>
             )}
             {jobRole && (
