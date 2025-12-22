@@ -151,6 +151,7 @@ export default function FaceRecognitionPage() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               displayRect={displayRect}
+              navigateOnClick={true}
             />
 
             {/* Top overlay - Status */}

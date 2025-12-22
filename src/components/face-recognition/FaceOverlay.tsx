@@ -17,6 +17,8 @@ interface FaceOverlayProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   displayRect: FaceDisplayRect | null;
+  /** 인식된 사용자 클릭 시 프로필 페이지로 이동할지 여부 */
+  navigateOnClick?: boolean;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -29,9 +31,20 @@ export function FaceOverlay({
   pendingIds,
   selectedId,
   onSelect,
-  displayRect
+  displayRect,
+  navigateOnClick = false
 }: FaceOverlayProps) {
   const pendingSet = useMemo(() => new Set(pendingIds), [pendingIds]);
+
+  const handleCardClick = (faceId: string, result: RecognitionResult | undefined) => {
+    // 인식된 사용자인 경우 프로필 페이지로 이동
+    if (navigateOnClick && result?.recognized && result?.user_id) {
+      window.location.href = `/profile/${result.user_id}`;
+      return;
+    }
+    // 아니면 기존 동작 (선택)
+    onSelect(faceId);
+  };
 
   if (!displayRect) return null;
 
@@ -136,7 +149,7 @@ export function FaceOverlay({
 
             <button
               type="button"
-              onClick={() => onSelect(face.id)}
+              onClick={() => handleCardClick(face.id, result)}
               className="absolute pointer-events-auto transition-all duration-150"
               style={{
                 left: cardLeft,
