@@ -92,11 +92,10 @@ export async function POST(request: Request) {
       photoUrl = urlData.publicUrl;
     }
 
-    // Check if identity already exists for this user
+    // Check if identity already exists for this user (any source)
     const { data: existingIdentity } = await serviceClient
       .from('fr_identities')
-      .select('id')
-      .eq('source', 'sureNet')
+      .select('id, source')
       .eq('external_key', userId)
       .single();
 
@@ -112,7 +111,6 @@ export async function POST(request: Request) {
           embedding: extractResult.embedding,
           updated_at: new Date().toISOString()
         })
-        .eq('source', 'sureNet')
         .eq('external_key', userId);
 
       if (updateError) {

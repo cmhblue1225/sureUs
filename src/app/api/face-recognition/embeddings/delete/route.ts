@@ -29,7 +29,6 @@ export async function DELETE(request: Request) {
     const { error: deleteError } = await serviceClient
       .from('fr_identities')
       .delete()
-      .eq('source', 'sureNet')
       .eq('external_key', userId);
 
     if (deleteError) {

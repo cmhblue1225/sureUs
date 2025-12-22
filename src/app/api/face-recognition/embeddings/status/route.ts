@@ -31,11 +31,10 @@ export async function GET() {
       );
     }
 
-    // Get all face identities from fr_identities (source='sureNet')
+    // Get all face identities from fr_identities
     const { data: identities, error: identitiesError } = await serviceClient
       .from('fr_identities')
       .select('external_key, updated_at')
-      .eq('source', 'sureNet')
       .eq('is_active', true);
 
     if (identitiesError) {
