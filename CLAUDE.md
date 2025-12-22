@@ -101,7 +101,15 @@ src/
 **네트워크 시각화**
 - Force-directed 레이아웃 (`lib/graph/forceLayout.ts`)
 - 클러스터링 (`lib/graph/clustering.ts`)
-- 의미 검색 시 방사형 배치 + 동심원 영역 표시
+- 의미 검색 시 관련도 기반 배치:
+  - 동심원 영역: 최고 매칭(70%+, 300px), 높은 매칭(50-69%, 450px), 관련 있음(30-49%, 600px)
+  - 결정적 레이아웃: `runSearchBasedForceLayout()` - 티어별 원형 배치
+  - React Flow 노드는 좌상단 기준 배치 → 중심 맞춤 시 오프셋 필요 (-90px, -55px)
+
+**조직 구조 (3단계)**
+- 본부(Division) → 센터(Center) → 팀(Team)
+- `lib/constants/organization.ts`에서 관리
+- 부서 선택 시 상위 조직 자동 추론: `findOrgHierarchyByName()`
 
 ## 환경 변수
 
@@ -136,6 +144,16 @@ NEXT_PUBLIC_APP_URL
 - `announcements` - 공지사항
 - `board_posts` / `board_comments` - 게시판
 - `calendar_events` - 일정
+
+## 인증 플로우
+
+```
+일반 사용자: /login → /onboarding (미완료 시) → /dashboard
+관리자: /login → /admin/cohorts (기수 선택) → /dashboard
+```
+- 미들웨어: `lib/supabase/middleware.ts`
+- 관리자 판별: `users.role = 'admin'`
+- 기수 선택 상태: 쿠키 `selected_cohort_id`
 
 ## 코드 스타일
 

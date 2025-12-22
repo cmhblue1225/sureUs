@@ -11,3 +11,5 @@ export { CustomEdge, type CustomEdgeData } from "./CustomEdge";
 export { GraphControls } from "./GraphControls";
 export { ProfileModal } from "./ProfileModal";
 export { SemanticSearch, type SemanticSearchResult, type SemanticSearchNode } from "./SemanticSearch";
+export { CohortMemberList } from "./CohortMemberList";
+export { TeamGroupingPanel } from "./TeamGroupingPanel";

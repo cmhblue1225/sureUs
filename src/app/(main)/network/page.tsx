@@ -17,16 +17,21 @@ import "@xyflow/react/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Search, X, ChevronDown, ChevronUp, Users, SearchX, Star, Sparkles, Circle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, RefreshCw, Search, X, ChevronDown, ChevronUp, Users, SearchX, Star, Sparkles, Circle, Network, List } from "lucide-react";
 import Link from "next/link";
 import {
   EnhancedUserNode,
   ProfileModal,
   SemanticSearch,
+  CohortMemberList,
+  TeamGroupingPanel,
   type EnhancedUserNodeData,
   type SemanticSearchResult,
   type SemanticSearchNode,
 } from "@/components/graph";
+import { createClient } from "@/lib/supabase/client";
+import { checkIsAdmin } from "@/lib/utils/auth";
 import {
   runForceSimulation,
   runSearchBasedForceLayout,
@@ -281,6 +286,9 @@ function NetworkPageContent() {
   // 검색 결과 없음 상태
   const [noResultsFound, setNoResultsFound] = useState(false);
 
+  // 관리자 상태
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // React Flow 상태
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const { fitView } = useReactFlow();
@@ -328,6 +336,16 @@ function NetworkPageContent() {
   useEffect(() => {
     fetchNetwork();
   }, [fetchNetwork]);
+
+  // 관리자 권한 확인
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const supabase = createClient();
+      const adminStatus = await checkIsAdmin(supabase);
+      setIsAdmin(adminStatus);
+    };
+    checkAdminStatus();
+  }, []);
 
   // 애니메이션 함수 (stagger 지원)
   const animateToPositions = useCallback(
@@ -730,6 +748,12 @@ function NetworkPageContent() {
     };
   }, []);
 
+  // 기수 동료 수 (본인 제외) - 모든 훅은 조기 return 전에 선언해야 함
+  const cohortMemberCount = useMemo(() => {
+    if (!networkData) return 0;
+    return networkData.nodes.filter(n => !n.isCurrentUser).length;
+  }, [networkData]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] gap-4">
@@ -774,7 +798,7 @@ function NetworkPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">네트워크 그래프</h1>
+          <h1 className="text-3xl font-bold">네트워크</h1>
           <p className="text-muted-foreground mt-1">
             나를 중심으로 동료들과의 관계를 탐색하세요
           </p>
@@ -785,8 +809,28 @@ function NetworkPageContent() {
         </Button>
       </div>
 
-      {/* Main Area */}
-      <div className="grid gap-6 lg:grid-cols-4">
+      {/* Tabs */}
+      <Tabs defaultValue="graph" className="w-full">
+        <TabsList className={`grid w-full max-w-md ${isAdmin ? 'grid-cols-3 max-w-lg' : 'grid-cols-2'}`}>
+          <TabsTrigger value="graph" className="flex items-center gap-2">
+            <Network className="h-4 w-4" />
+            네트워크 그래프
+          </TabsTrigger>
+          <TabsTrigger value="members" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            기수 동료 ({cohortMemberCount}명)
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="grouping" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              조 편성
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* 네트워크 그래프 탭 */}
+        <TabsContent value="graph" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-4">
         {/* Graph */}
         <div className="lg:col-span-3">
           <Card className="overflow-hidden">
@@ -1074,7 +1118,32 @@ function NetworkPageContent() {
             </CardContent>
           </Card>
         </div>
-      </div>
+          </div>
+        </TabsContent>
+
+        {/* 기수 동료 탭 */}
+        <TabsContent value="members" className="mt-6">
+          <Card>
+            <CardContent className="pt-6">
+              <CohortMemberList
+                members={networkData?.nodes || []}
+                currentUserId={networkData?.currentUserId}
+                onViewProfile={(node) => {
+                  setSelectedNode(node);
+                  setIsProfileModalOpen(true);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 조 편성 탭 (관리자 전용) */}
+        {isAdmin && (
+          <TabsContent value="grouping" className="mt-6">
+            <TeamGroupingPanel memberCount={cohortMemberCount} />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* Profile Modal */}
       <ProfileModal

@@ -973,6 +973,79 @@ export type Database = {
           },
         ]
       }
+      team_groupings: {
+        Row: {
+          announcement_id: string | null
+          cohort_id: string
+          created_at: string | null
+          created_by: string
+          criteria_parsed: Json
+          criteria_text: string
+          id: string
+          shared_at: string | null
+          shared_via: string | null
+          team_count: number
+          team_size: number
+          teams_json: Json
+          ungrouped_members: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          announcement_id?: string | null
+          cohort_id: string
+          created_at?: string | null
+          created_by: string
+          criteria_parsed: Json
+          criteria_text: string
+          id?: string
+          shared_at?: string | null
+          shared_via?: string | null
+          team_count: number
+          team_size: number
+          teams_json: Json
+          ungrouped_members?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          announcement_id?: string | null
+          cohort_id?: string
+          created_at?: string | null
+          created_by?: string
+          criteria_parsed?: Json
+          criteria_text?: string
+          id?: string
+          shared_at?: string | null
+          shared_via?: string | null
+          team_count?: number
+          team_size?: number
+          teams_json?: Json
+          ungrouped_members?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_groupings_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_groupings_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_groupings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null

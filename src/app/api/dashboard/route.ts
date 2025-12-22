@@ -233,14 +233,15 @@ export async function GET() {
         .order("created_at", { ascending: false })
         .limit(5),
 
-      // 다가오는 일정 (오늘 이후)
+      // 다가오는 일정 및 진행중인 일정
       // training 이벤트: 같은 기수의 교육 일정
       // personal 이벤트: 본인이 만든 개인 일정 (cohort_id 무관)
+      // end_date >= now: 아직 끝나지 않은 일정 (진행중 + 예정)
       serviceClient
         .from("calendar_events")
         .select("*")
         .or(`and(event_type.eq.training,cohort_id.eq.${cohortId}),and(event_type.eq.personal,user_id.eq.${user.id})`)
-        .gte("start_date", new Date().toISOString())
+        .gte("end_date", new Date().toISOString())
         .order("start_date", { ascending: true })
         .limit(5),
 

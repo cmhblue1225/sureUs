@@ -168,6 +168,37 @@ export async function DELETE(
       );
     }
 
+    // 관련 댓글 삭제
+    const { error: commentsError } = await supabase
+      .from("announcement_comments")
+      .delete()
+      .eq("announcement_id", id);
+
+    if (commentsError) {
+      console.error("Comments delete error:", commentsError);
+    }
+
+    // 관련 파일 삭제
+    const { error: filesError } = await supabase
+      .from("announcement_files")
+      .delete()
+      .eq("announcement_id", id);
+
+    if (filesError) {
+      console.error("Files delete error:", filesError);
+    }
+
+    // team_groupings의 announcement_id 참조 해제
+    const { error: groupingsError } = await supabase
+      .from("team_groupings")
+      .update({ announcement_id: null })
+      .eq("announcement_id", id);
+
+    if (groupingsError) {
+      console.error("Team groupings update error:", groupingsError);
+    }
+
+    // 공지 삭제
     const { error } = await supabase
       .from("announcements")
       .delete()
