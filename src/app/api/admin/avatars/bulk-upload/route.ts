@@ -16,15 +16,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check admin role
+    // Check admin role from profiles table
     const serviceClient = createServiceClient();
-    const { data: userData } = await serviceClient
-      .from("users")
+    const { data: profileData } = await serviceClient
+      .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
       .single();
 
-    if (userData?.role !== "admin") {
+    if (profileData?.role !== "admin") {
       return NextResponse.json(
         { success: false, error: "관리자 권한이 필요합니다." },
         { status: 403 }
