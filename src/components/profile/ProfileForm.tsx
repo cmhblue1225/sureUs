@@ -111,31 +111,34 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
   const [certifications, setCertifications] = useState(initialData?.certifications || "");
   const [languages, setLanguages] = useState(initialData?.languages || "");
 
-  // Visibility settings
-  const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>(
-    initialData?.visibilitySettings || {
-      department: "public",
-      job_role: "public",
-      office_location: "public",
-      mbti: "public",
-      hobbies: "public",
-      collaboration_style: "public",
-      strengths: "public",
-      preferred_people_type: "public",
-      // 새 필드 기본값
-      living_location: "public",
-      hometown: "public",
-      education: "public",
-      work_description: "public",
-      tech_stack: "public",
-      favorite_food: "public",
-      age_range: "public",
-      interests: "public",
-      career_goals: "public",
-      certifications: "public",
-      languages: "public",
-    }
-  );
+  // Visibility settings - 기본값과 기존 데이터 병합 (기존 데이터에 누락된 필드가 있을 수 있음)
+  const defaultVisibilitySettings: VisibilitySettings = {
+    department: "public",
+    job_role: "public",
+    office_location: "public",
+    mbti: "public",
+    hobbies: "public",
+    collaboration_style: "public",
+    strengths: "public",
+    preferred_people_type: "public",
+    // 새 필드 기본값
+    living_location: "public",
+    hometown: "public",
+    education: "public",
+    work_description: "public",
+    tech_stack: "public",
+    favorite_food: "public",
+    age_range: "public",
+    interests: "public",
+    career_goals: "public",
+    certifications: "public",
+    languages: "public",
+  };
+
+  const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>({
+    ...defaultVisibilitySettings,
+    ...initialData?.visibilitySettings,
+  });
 
   const updateVisibility = (field: keyof VisibilitySettings, value: VisibilityLevel) => {
     setVisibilitySettings((prev) => ({ ...prev, [field]: value }));
@@ -184,7 +187,16 @@ export function ProfileForm({ initialData, currentAvatarUrl }: ProfileFormProps)
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "프로필 저장에 실패했습니다.");
+        // 유효성 검사 오류 상세 표시
+        if (data.details?.fieldErrors) {
+          const fieldErrors = Object.entries(data.details.fieldErrors)
+            .map(([field, errors]) => `${field}: ${(errors as string[]).join(", ")}`)
+            .join("\n");
+          setError(`${data.error}\n${fieldErrors}`);
+        } else {
+          setError(data.error || "프로필 저장에 실패했습니다.");
+        }
+        console.error("Profile save error:", data);
         return;
       }
 
