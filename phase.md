@@ -2,7 +2,101 @@
 
 > 마지막 업데이트: 2025-12-22
 
-## 현재 Phase: 26 완료 (기본 아바타 이미지)
+## 현재 Phase: 27 완료 (슈아유? - 얼굴 인식 통합)
+
+---
+
+## Phase 27: 슈아유? - 얼굴 인식 시스템 통합
+**상태: 완료**
+
+### 목표
+sureus-facerec-claude 레포지토리의 얼굴 인식 시스템을 sureNet에 완벽하게 통합
+
+### 27-1. 의존성 및 환경 설정
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| @mediapipe/tasks-vision 설치 | ✅ 완료 | `package.json` |
+| lodash.throttle 설치 | ✅ 완료 | `package.json` |
+| framer-motion 설치 | ✅ 완료 | `package.json` |
+| 환경 변수 추가 | ✅ 완료 | `.env.local` |
+
+### 27-2. 설정 및 타입 파일
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 얼굴 인식 설정 파일 | ✅ 완료 | `src/lib/face-recognition/config.ts` |
+| 타입 정의 | ✅ 완료 | `src/lib/face-recognition/types.ts` |
+| face_embeddings 타입 추가 | ✅ 완료 | `src/types/database.ts` |
+
+### 27-3. 훅 마이그레이션
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| useMediaPipe 훅 | ✅ 완료 | `src/lib/face-recognition/hooks/useMediaPipe.ts` |
+| useFaceRecognition 훅 | ✅ 완료 | `src/lib/face-recognition/hooks/useFaceRecognition.ts` |
+
+### 27-4. 컴포넌트 마이그레이션
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| ProfileCard 컴포넌트 | ✅ 완료 | `src/components/face-recognition/ProfileCard.tsx` |
+| FaceOverlay 컴포넌트 | ✅ 완료 | `src/components/face-recognition/FaceOverlay.tsx` |
+| ProfileDetailPanel 컴포넌트 | ✅ 완료 | `src/components/face-recognition/ProfileDetailPanel.tsx` |
+
+### 27-5. API 라우트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 인식 API 프록시 | ✅ 완료 | `src/app/api/face-recognition/recognize/route.ts` |
+| 얼굴 등록 API | ✅ 완료 | `src/app/api/face-recognition/upload-face/route.ts` |
+| 임베딩 상태 조회 | ✅ 완료 | `src/app/api/face-recognition/embeddings/status/route.ts` |
+| 임베딩 삭제 | ✅ 완료 | `src/app/api/face-recognition/embeddings/delete/route.ts` |
+
+### 27-6. 페이지 생성
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 슈아유? 메인 페이지 | ✅ 완료 | `src/app/(main)/face-recognition/page.tsx` |
+| 얼굴 등록 관리 페이지 | ✅ 완료 | `src/app/(main)/face-recognition/manage/page.tsx` |
+| 라이브 스트림 페이지 | ✅ 완료 | `src/app/(main)/face-recognition/live/page.tsx` |
+
+### 27-7. 사이드바 통합
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| 슈아유? 메뉴 추가 | ✅ 완료 | `src/components/layout/Sidebar.tsx` |
+
+### 기능 요약
+- **슈아유?**: 실시간 얼굴 인식 (MediaPipe + FastAPI)
+- **얼굴 등록 관리**: 사용자 얼굴 이미지 업로드 및 임베딩 저장
+- **라이브 스트림**: WebRTC 기반 모바일 화면 스트리밍
+- **FastAPI 백엔드**: https://sureus.up.railway.app
+
+### 신규 파일
+| 파일 | 용도 |
+|------|------|
+| `src/lib/face-recognition/config.ts` | 얼굴 인식 설정 |
+| `src/lib/face-recognition/types.ts` | 타입 정의 |
+| `src/lib/face-recognition/hooks/useMediaPipe.ts` | MediaPipe 얼굴 감지 훅 |
+| `src/lib/face-recognition/hooks/useFaceRecognition.ts` | 얼굴 인식 훅 |
+| `src/components/face-recognition/ProfileCard.tsx` | 프로필 카드 |
+| `src/components/face-recognition/FaceOverlay.tsx` | 얼굴 박스 오버레이 |
+| `src/components/face-recognition/ProfileDetailPanel.tsx` | 프로필 상세 패널 |
+| `src/app/api/face-recognition/recognize/route.ts` | 인식 API |
+| `src/app/api/face-recognition/upload-face/route.ts` | 얼굴 등록 API |
+| `src/app/api/face-recognition/embeddings/status/route.ts` | 상태 조회 API |
+| `src/app/api/face-recognition/embeddings/delete/route.ts` | 삭제 API |
+| `src/app/(main)/face-recognition/page.tsx` | 메인 페이지 |
+| `src/app/(main)/face-recognition/manage/page.tsx` | 관리 페이지 |
+| `src/app/(main)/face-recognition/live/page.tsx` | 라이브 스트림 페이지 |
+
+### 환경 변수
+```env
+NEXT_PUBLIC_RECOG_API_URL=https://sureus.up.railway.app
+RECOG_API_URL=https://sureus.up.railway.app
+```
+
+### 필요한 데이터베이스 테이블
+- `face_embeddings`: 사용자 얼굴 임베딩 저장
+- `webrtc_signals`: WebRTC 시그널링 (라이브 스트림용, 선택)
+
+---
+
+## Phase 26 완료 (기본 아바타 이미지)
 
 ---
 

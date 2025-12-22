@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Megaphone,
   MessageCircle,
+  ScanFace,
   Settings,
   LogOut,
   UserPlus,
@@ -31,6 +32,7 @@ const navigation = [
   { name: "게시판", href: "/board", icon: MessageSquare },
   { name: "공지사항", href: "/announcements", icon: Megaphone },
   { name: "메시지", href: "/messages", icon: MessageCircle },
+  { name: "슈아유?", href: "/face-recognition", icon: ScanFace },
   { name: "설정", href: "/settings", icon: Settings },
 ];
 

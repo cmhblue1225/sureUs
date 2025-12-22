@@ -542,6 +542,38 @@ export type Database = {
           },
         ]
       }
+      face_embeddings: {
+        Row: {
+          id: string
+          user_id: string
+          embedding: number[]
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          embedding: number[]
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          embedding?: number[]
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_embeddings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches_cache: {
         Row: {
           common_tags: string[] | null
