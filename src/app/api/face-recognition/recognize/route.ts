@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     console.log(`Forwarding to: ${RECOG_API_URL}/recognize`);
 
-    // Forward to server_recognition
+    // Forward to FastAPI server_recognition directly
     const response = await fetch(`${RECOG_API_URL}/recognize`, {
       method: 'POST',
       body: formData,

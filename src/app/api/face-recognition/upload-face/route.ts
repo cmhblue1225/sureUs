@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     // Forward to FastAPI to extract embedding
     const extractFormData = new FormData();
-    extractFormData.append('file', faceImage);
+    extractFormData.append('image', faceImage);
 
     const extractResponse = await fetch(`${RECOG_API_URL}/extract-embedding`, {
       method: 'POST',
