@@ -23,6 +23,7 @@ import {
   Cpu,
   Globe,
   Layers,
+  ScanFace,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ const DIAGRAMS = {
     subgraph Client["클라이언트"]
         Browser["웹 브라우저"]
         ReactFlow["React Flow<br/>네트워크 시각화"]
+        MediaPipe["MediaPipe<br/>얼굴 감지"]
     end
 
     subgraph NextJS["Next.js 15"]
@@ -47,6 +49,7 @@ const DIAGRAMS = {
     subgraph AI["AI 서비스"]
         OpenAI["OpenAI<br/>text-embedding-3-small"]
         Claude["Claude<br/>claude-sonnet-4-5-20250929"]
+        FaceAPI["FastAPI<br/>얼굴 인식 서버"]
     end
 
     subgraph Supabase["Supabase"]
@@ -57,9 +60,11 @@ const DIAGRAMS = {
 
     Browser --> Pages
     ReactFlow --> API
+    MediaPipe --> API
     MW --> Auth
     API --> OpenAI
     API --> Claude
+    API --> FaceAPI
     API --> DB
     Pages --> Storage`,
 
@@ -98,6 +103,7 @@ const DIAGRAMS = {
     users ||--o{ conversations : participates
     users ||--o{ board_posts : writes
     users ||--o{ notifications : receives
+    users ||--o| fr_identities : has
 
     profiles ||--o{ profile_tags : has
     profiles ||--o| embeddings : has
@@ -124,6 +130,27 @@ const DIAGRAMS = {
 
     style Start fill:#22c55e
     style Complete fill:#22c55e`,
+
+  faceRecognitionFlow: `sequenceDiagram
+    actor U as 사용자
+    participant MP as MediaPipe
+    participant FE as 프론트엔드
+    participant API as Next.js API
+    participant FR as FastAPI
+    participant DB as Supabase
+
+    U->>FE: 카메라 활성화
+    FE->>MP: 얼굴 감지 시작
+    loop 매 프레임
+        MP->>FE: 얼굴 바운딩 박스
+    end
+    FE->>API: POST /api/face-recognition/recognize
+    API->>FR: 얼굴 임베딩 + 매칭
+    FR->>DB: fr_identities 조회
+    DB-->>FR: 매칭 결과
+    FR-->>API: 인식 결과 (user_id, profile)
+    API-->>FE: RecognitionResult
+    FE-->>U: 프로필 페이지로 이동`,
 };
 
 // 기술 스택 데이터
@@ -136,6 +163,8 @@ const TECH_STACK = [
   { category: "벡터 DB", tech: "pgvector", purpose: "임베딩 유사도 검색", icon: Database },
   { category: "AI 임베딩", tech: "OpenAI text-embedding-3-small", purpose: "1536차원 의미 벡터", icon: Cpu },
   { category: "AI 자연어", tech: "Claude claude-sonnet-4-5-20250929", purpose: "쿼리 확장/분석", icon: Cpu },
+  { category: "얼굴 감지", tech: "MediaPipe Face Detector", purpose: "브라우저 내 실시간 얼굴 감지", icon: ScanFace },
+  { category: "얼굴 인식", tech: "FastAPI + face_recognition", purpose: "얼굴 임베딩 및 매칭 서버", icon: ScanFace },
   { category: "인증", tech: "Supabase Auth", purpose: "이메일/소셜 로그인", icon: Shield },
   { category: "파일 저장", tech: "Supabase Storage", purpose: "프로필 이미지", icon: Database },
   { category: "배포", tech: "Railway", purpose: "서버 호스팅", icon: Globe },
@@ -179,6 +208,12 @@ const FEATURE_MODULES = [
     icon: Calendar,
     features: ["월/주/일 뷰", "이벤트 CRUD", "필터링", "기수별 분리"],
   },
+  {
+    title: "얼굴 인식 (슈아유?)",
+    description: "카메라로 동료를 인식하고 프로필 바로 확인",
+    icon: ScanFace,
+    features: ["MediaPipe 실시간 감지", "1초마다 자동 인식", "얼굴 등록 관리", "WebRTC 라이브 스트림"],
+  },
 ];
 
 // API 라우트 개요
@@ -186,6 +221,7 @@ const API_ROUTES = [
   { category: "인증", count: 3, routes: ["/api/auth/callback", "/api/auth/sign-out", "/api/auth/user"] },
   { category: "프로필", count: 5, routes: ["/api/profile", "/api/profile/avatar", "/api/profile/embedding", "/api/profile/generate-embedding", "/api/profile/visibility"] },
   { category: "네트워크", count: 2, routes: ["/api/graph/data", "/api/graph/semantic-search"] },
+  { category: "얼굴 인식", count: 4, routes: ["/api/face-recognition/recognize", "/api/face-recognition/upload-face", "/api/face-recognition/embeddings/status", "/api/face-recognition/embeddings/delete"] },
   { category: "게시판", count: 5, routes: ["/api/board/posts", "/api/board/posts/[id]", "/api/board/posts/[id]/comments", "/api/board/posts/[id]/like", "/api/board/categories"] },
   { category: "공지", count: 3, routes: ["/api/announcements", "/api/announcements/[id]", "/api/announcements/[id]/read"] },
   { category: "메시지", count: 3, routes: ["/api/messages/conversations", "/api/messages/conversations/[id]", "/api/messages/conversations/[id]/messages"] },
@@ -208,13 +244,15 @@ export default function DocsPage() {
           <Badge variant="secondary">OpenAI</Badge>
           <Badge variant="secondary">Claude</Badge>
           <Badge variant="secondary">React Flow</Badge>
+          <Badge variant="secondary">MediaPipe</Badge>
+          <Badge variant="secondary">FastAPI</Badge>
         </div>
       </section>
 
       {/* 시스템 개요 */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold border-b pb-2">시스템 개요</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -254,6 +292,19 @@ export default function DocsPage() {
               </p>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ScanFace className="h-5 w-5 text-primary" />
+                얼굴 인식 (슈아유?)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                실시간 얼굴 감지 및 인식으로 동료를 즉시 찾기
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -270,6 +321,11 @@ export default function DocsPage() {
           <MermaidDiagram
             title="의미 검색 흐름"
             chart={DIAGRAMS.semanticSearchFlow}
+          />
+
+          <MermaidDiagram
+            title="얼굴 인식 흐름"
+            chart={DIAGRAMS.faceRecognitionFlow}
           />
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -452,7 +508,7 @@ export default function DocsPage() {
       {/* 푸터 */}
       <footer className="text-center text-sm text-muted-foreground pt-8 border-t">
         <p>sureNet - AI 기반 사내 네트워킹 서비스</p>
-        <p className="mt-1">Built with Next.js, Supabase, OpenAI, and Claude</p>
+        <p className="mt-1">Built with Next.js, Supabase, OpenAI, Claude, MediaPipe, and FastAPI</p>
       </footer>
     </div>
   );
