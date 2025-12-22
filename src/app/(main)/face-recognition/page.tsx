@@ -1,19 +1,17 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useMediaPipe } from '@/lib/face-recognition/hooks/useMediaPipe';
-import { useFaceRecognition } from '@/lib/face-recognition/hooks/useFaceRecognition';
+import { useFaceRecognition, type UseFaceRecognitionOptions } from '@/lib/face-recognition/hooks/useFaceRecognition';
 import { FaceOverlay } from '@/components/face-recognition/FaceOverlay';
 import { ProfileDetailPanel } from '@/components/face-recognition/ProfileDetailPanel';
 import { Camera, Settings, Video } from 'lucide-react';
 import type { RecognitionResult } from '@/lib/face-recognition/types';
 
 export default function FaceRecognitionPage() {
-  const router = useRouter();
   const navigatedRef = useRef<boolean>(false); // 이미 이동했는지 추적
 
   const {
@@ -30,20 +28,45 @@ export default function FaceRecognitionPage() {
 
   // 인식 성공 시 즉시 프로필 페이지로 이동
   const handleRecognized = useCallback((result: RecognitionResult) => {
-    if (navigatedRef.current) return; // 이미 이동했으면 무시
-    if (result.recognized && result.user_id) {
-      navigatedRef.current = true;
-      router.push(`/profile/${result.user_id}`);
+    console.log('[FaceRecognition] onRecognized called:', result);
+    if (navigatedRef.current) {
+      console.log('[FaceRecognition] Already navigated, skipping');
+      return;
     }
-  }, [router]);
+    if (result.recognized && result.user_id) {
+      console.log('[FaceRecognition] Navigating to profile:', result.user_id);
+      navigatedRef.current = true;
+      // 모바일 호환성을 위해 window.location 사용
+      window.location.href = `/profile/${result.user_id}`;
+    }
+  }, []);
+
+  // 옵션 객체를 안정화
+  const recognitionOptions = useMemo<UseFaceRecognitionOptions>(() => ({
+    onRecognized: handleRecognized
+  }), [handleRecognized]);
 
   const { resultsById, pendingIds, error: recogError } = useFaceRecognition(
     videoRef,
     trackedFaces,
-    { onRecognized: handleRecognized }
+    recognitionOptions
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // 결과에서 인식된 사용자 감지 (백업 - 콜백이 실패할 경우 대비)
+  useEffect(() => {
+    if (navigatedRef.current) return;
+
+    for (const result of Object.values(resultsById)) {
+      if (result.recognized && result.user_id) {
+        console.log('[FaceRecognition] Backup navigation triggered for:', result.user_id);
+        navigatedRef.current = true;
+        window.location.href = `/profile/${result.user_id}`;
+        return;
+      }
+    }
+  }, [resultsById]);
 
   useEffect(() => {
     if (!trackedFaces.length) {
