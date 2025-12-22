@@ -27,6 +27,9 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
     const faceImage = formData.get('face') as File;
+    const userName = formData.get('name') as string;
+    const userEmail = formData.get('email') as string;
+    const userOrg = formData.get('org') as string;
 
     if (!userId || !faceImage) {
       return NextResponse.json(
@@ -62,46 +65,82 @@ export async function POST(request: Request) {
       );
     }
 
-    // Save embedding to Supabase
+    // Save embedding to Supabase fr_identities table
     const serviceClient = createServiceClient();
 
-    // Check if embedding already exists for this user
-    const { data: existingEmbedding } = await serviceClient
-      .from('face_embeddings')
+    // Upload image to Supabase storage and get URL
+    const fileBuffer = await faceImage.arrayBuffer();
+    const fileExt = faceImage.name.split('.').pop() || 'jpg';
+    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+
+    const { data: uploadData, error: uploadError } = await serviceClient.storage
+      .from('face-photos')
+      .upload(fileName, fileBuffer, {
+        contentType: faceImage.type,
+        upsert: true
+      });
+
+    let photoUrl = '';
+    if (uploadError) {
+      console.warn('Photo upload warning:', uploadError.message);
+      // Use placeholder if upload fails
+      photoUrl = '/favicon.ico';
+    } else {
+      const { data: urlData } = serviceClient.storage
+        .from('face-photos')
+        .getPublicUrl(uploadData.path);
+      photoUrl = urlData.publicUrl;
+    }
+
+    // Check if identity already exists for this user
+    const { data: existingIdentity } = await serviceClient
+      .from('fr_identities')
       .select('id')
-      .eq('user_id', userId)
+      .eq('source', 'sureNet')
+      .eq('external_key', userId)
       .single();
 
-    if (existingEmbedding) {
-      // Update existing embedding
+    if (existingIdentity) {
+      // Update existing identity
       const { error: updateError } = await serviceClient
-        .from('face_embeddings')
+        .from('fr_identities')
         .update({
+          name: userName || 'Unknown',
+          email: userEmail || null,
+          org: userOrg || null,
+          photo_url: photoUrl,
           embedding: extractResult.embedding,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', userId);
+        .eq('source', 'sureNet')
+        .eq('external_key', userId);
 
       if (updateError) {
-        console.error('Update embedding error:', updateError);
+        console.error('Update identity error:', updateError);
         return NextResponse.json(
           { error: '임베딩 업데이트 실패', details: updateError.message },
           { status: 500 }
         );
       }
     } else {
-      // Insert new embedding
+      // Insert new identity
       const { error: insertError } = await serviceClient
-        .from('face_embeddings')
+        .from('fr_identities')
         .insert({
-          user_id: userId,
+          source: 'sureNet',
+          external_key: userId,
+          name: userName || 'Unknown',
+          email: userEmail || null,
+          org: userOrg || null,
+          photo_url: photoUrl,
           embedding: extractResult.embedding,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          embedding_model: 'face_recognition_dlib',
+          embedding_version: 'v1',
+          is_active: true
         });
 
       if (insertError) {
-        console.error('Insert embedding error:', insertError);
+        console.error('Insert identity error:', insertError);
         return NextResponse.json(
           { error: '임베딩 저장 실패', details: insertError.message },
           { status: 500 }

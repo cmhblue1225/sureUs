@@ -19,7 +19,7 @@ export async function GET() {
     // Get all users with their face embedding status
     const { data: users, error: usersError } = await serviceClient
       .from('users')
-      .select('id, email, created_at')
+      .select('id, email, name, created_at, profiles(department)')
       .is('deleted_at', null)
       .order('email');
 
@@ -31,32 +31,39 @@ export async function GET() {
       );
     }
 
-    // Get all face embeddings
-    const { data: embeddings, error: embeddingsError } = await serviceClient
-      .from('face_embeddings')
-      .select('user_id, updated_at');
+    // Get all face identities from fr_identities (source='sureNet')
+    const { data: identities, error: identitiesError } = await serviceClient
+      .from('fr_identities')
+      .select('external_key, updated_at')
+      .eq('source', 'sureNet')
+      .eq('is_active', true);
 
-    if (embeddingsError) {
-      console.error('Embeddings fetch error:', embeddingsError);
+    if (identitiesError) {
+      console.error('Identities fetch error:', identitiesError);
       return NextResponse.json(
         { error: '임베딩 조회 실패' },
         { status: 500 }
       );
     }
 
-    // Create a map of user_id to embedding info
+    // Create a map of external_key (user_id) to updated_at
     const embeddingMap = new Map(
-      embeddings?.map(e => [e.user_id, e.updated_at]) || []
+      identities?.map(e => [e.external_key, e.updated_at]) || []
     );
 
     // Combine user data with embedding status
-    const usersWithStatus = users?.map(user => ({
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-      has_embedding: embeddingMap.has(user.id),
-      embedding_updated_at: embeddingMap.get(user.id) || null
-    })) || [];
+    const usersWithStatus = users?.map(user => {
+      const profile = user.profiles as { department?: string } | null;
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        department: profile?.department || null,
+        created_at: user.created_at,
+        has_embedding: embeddingMap.has(user.id),
+        embedding_updated_at: embeddingMap.get(user.id) || null
+      };
+    }) || [];
 
     return NextResponse.json({
       success: true,

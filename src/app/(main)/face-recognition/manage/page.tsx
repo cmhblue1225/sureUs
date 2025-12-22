@@ -12,6 +12,8 @@ import { ArrowLeft, Upload, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 interface User {
   id: string;
   email: string;
+  name: string;
+  department: string | null;
   created_at: string;
   has_embedding: boolean;
   embedding_updated_at?: string | null;
@@ -95,6 +97,12 @@ export default function FaceManagementPage() {
       return;
     }
 
+    const selectedUser = users.find(u => u.id === selectedUserId);
+    if (!selectedUser) {
+      setMessage({ type: 'error', text: '선택된 사용자를 찾을 수 없습니다' });
+      return;
+    }
+
     try {
       setUploading(true);
       setMessage(null);
@@ -102,6 +110,11 @@ export default function FaceManagementPage() {
       const formData = new FormData();
       formData.append('face', faceImage);
       formData.append('userId', selectedUserId);
+      formData.append('name', selectedUser.name);
+      formData.append('email', selectedUser.email);
+      if (selectedUser.department) {
+        formData.append('org', selectedUser.department);
+      }
 
       const response = await fetch('/api/face-recognition/upload-face', {
         method: 'POST',
@@ -194,7 +207,7 @@ export default function FaceManagementPage() {
                   <option value="">사용자를 선택하세요</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.email} {hasEmbedding(user.id) && '(등록됨)'}
+                      {user.name} ({user.email}) {hasEmbedding(user.id) && '- 등록됨'}
                     </option>
                   ))}
                 </select>
@@ -286,10 +299,11 @@ export default function FaceManagementPage() {
                             <XCircle className="w-5 h-5 text-yellow-600" />
                           )}
                           <div className="min-w-0">
-                            <p className="truncate font-medium">{user.email}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(user.created_at).toLocaleDateString('ko-KR')}
-                            </p>
+                            <p className="truncate font-medium">{user.name}</p>
+                            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+                            {user.department && (
+                              <p className="text-xs text-muted-foreground">{user.department}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">

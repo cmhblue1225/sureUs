@@ -542,37 +542,59 @@ export type Database = {
           },
         ]
       }
-      face_embeddings: {
+      fr_identities: {
         Row: {
           id: string
-          user_id: string
-          embedding: number[]
-          created_at: string | null
-          updated_at: string | null
+          source: string
+          external_key: string | null
+          name: string
+          email: string | null
+          org: string | null
+          photo_url: string
+          embedding: number[] | null
+          embedding_model: string
+          embedding_version: string
+          preprocess_version: string | null
+          is_active: boolean
+          metadata: Record<string, unknown> | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          user_id: string
-          embedding: number[]
-          created_at?: string | null
-          updated_at?: string | null
+          source: string
+          external_key?: string | null
+          name: string
+          email?: string | null
+          org?: string | null
+          photo_url: string
+          embedding?: number[] | null
+          embedding_model?: string
+          embedding_version?: string
+          preprocess_version?: string | null
+          is_active?: boolean
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          user_id?: string
-          embedding?: number[]
-          created_at?: string | null
-          updated_at?: string | null
+          source?: string
+          external_key?: string | null
+          name?: string
+          email?: string | null
+          org?: string | null
+          photo_url?: string
+          embedding?: number[] | null
+          embedding_model?: string
+          embedding_version?: string
+          preprocess_version?: string | null
+          is_active?: boolean
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "face_embeddings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       matches_cache: {
         Row: {

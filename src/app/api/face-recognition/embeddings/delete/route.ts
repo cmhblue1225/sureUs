@@ -27,9 +27,10 @@ export async function DELETE(request: Request) {
     const serviceClient = createServiceClient();
 
     const { error: deleteError } = await serviceClient
-      .from('face_embeddings')
+      .from('fr_identities')
       .delete()
-      .eq('user_id', userId);
+      .eq('source', 'sureNet')
+      .eq('external_key', userId);
 
     if (deleteError) {
       console.error('Delete embedding error:', deleteError);
