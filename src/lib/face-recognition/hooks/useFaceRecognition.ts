@@ -131,15 +131,29 @@ export function useFaceRecognition(
           throw new Error('Recognition request failed');
         }
 
-        const data: RecognitionResult = await response.json();
+        const rawData = await response.json();
+        console.log('[useFaceRecognition] Raw API Response:', JSON.stringify(rawData));
+
+        // FastAPI가 external_key를 반환할 수 있으므로 user_id로 매핑
+        const data: RecognitionResult = {
+          ...rawData,
+          user_id: rawData.user_id || rawData.external_key || null,
+        };
+        console.log('[useFaceRecognition] recognized:', data.recognized, 'user_id:', data.user_id);
+
         setResultsById(prev => ({
           ...prev,
           [targetId]: data
         }));
 
         // 인식 성공 시 콜백 호출
-        if (data.recognized && data.user_id && onRecognizedRef.current) {
-          onRecognizedRef.current(data);
+        if (data.recognized && data.user_id) {
+          console.log('[useFaceRecognition] Calling onRecognized callback');
+          if (onRecognizedRef.current) {
+            onRecognizedRef.current(data);
+          } else {
+            console.log('[useFaceRecognition] onRecognizedRef.current is null/undefined');
+          }
         }
 
       } catch (err: unknown) {
