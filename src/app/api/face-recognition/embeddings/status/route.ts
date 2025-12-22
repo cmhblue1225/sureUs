@@ -34,7 +34,7 @@ export async function GET() {
     // Get all face identities from fr_identities
     const { data: identities, error: identitiesError } = await serviceClient
       .from('fr_identities')
-      .select('external_key, updated_at')
+      .select('external_key, updated_at, embedding')
       .eq('is_active', true);
 
     if (identitiesError) {
@@ -46,8 +46,11 @@ export async function GET() {
     }
 
     // Create a map of external_key (user_id) to updated_at
+    // Only include records where embedding actually exists (not null and has values)
     const embeddingMap = new Map(
-      identities?.map(e => [e.external_key, e.updated_at]) || []
+      identities
+        ?.filter(e => e.embedding !== null && Array.isArray(e.embedding) && e.embedding.length > 0)
+        .map(e => [e.external_key, e.updated_at]) || []
     );
 
     // Combine user data with embedding status
