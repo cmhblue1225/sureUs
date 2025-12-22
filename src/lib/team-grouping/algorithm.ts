@@ -427,7 +427,14 @@ export function generateTeams(
     teams = optimizeWithSwaps(teams, criteria, maxOptimizationIterations);
   }
 
-  // 3. GeneratedTeam 형식으로 변환
+  // 3. 미배정 인원을 마지막 조에 추가
+  if (ungrouped.length > 0 && teams.length > 0) {
+    const lastTeam = teams[teams.length - 1];
+    lastTeam.push(...ungrouped);
+    ungrouped = []; // 미배정 인원 비우기
+  }
+
+  // 4. GeneratedTeam 형식으로 변환
   const generatedTeams: GeneratedTeam[] = teams.map((teamMembers, index) => ({
     teamIndex: index + 1,
     teamName: `${index + 1}조`,

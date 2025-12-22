@@ -71,19 +71,19 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-3 transition-all duration-300 ease-in-out">
-        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <Network className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span
+      <div className={cn(
+        "flex h-16 items-center border-b transition-all duration-300 ease-in-out",
+        isCollapsed ? "px-2 justify-center" : "px-4 justify-center"
+      )}>
+        <Link href="/dashboard" className="flex items-center justify-center overflow-hidden">
+          <img
+            src="/logo.png"
+            alt="sureUs"
             className={cn(
-              "font-bold text-xl whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden",
-              isCollapsed ? "w-0 opacity-0 ml-0" : "w-[120px] opacity-100 ml-0"
+              "object-contain transition-all duration-300 ease-in-out",
+              isCollapsed ? "h-10 w-10" : "h-12 w-auto max-w-[180px]"
             )}
-          >
-            sureUs
-          </span>
+          />
         </Link>
       </div>
 

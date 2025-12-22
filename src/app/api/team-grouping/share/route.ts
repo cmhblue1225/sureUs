@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkIsAdmin } from "@/lib/utils/auth";
 import { getEffectiveCohortId } from "@/lib/utils/cohort";
 import type { ShareRequest, GeneratedTeam, TeamMember } from "@/lib/team-grouping/types";
+import { findOrgHierarchyByName } from "@/lib/constants/organization";
 
 /**
  * POST /api/team-grouping/share
@@ -152,27 +153,52 @@ export async function POST(request: Request) {
 }
 
 /**
- * 공지사항 본문 생성
+ * 부서명에서 루트 레벨(연구소/센터/본부)만 추출
+ */
+function getRootDepartment(department: string | undefined): string | undefined {
+  if (!department) return undefined;
+
+  // "A > B > C" 형식인 경우 첫 번째 부분 추출
+  if (department.includes(" > ")) {
+    return department.split(" > ")[0];
+  }
+
+  // 단일 이름인 경우 해당 조직의 상위 찾기
+  const hierarchy = findOrgHierarchyByName(department);
+  if (hierarchy) {
+    return hierarchy.level1;
+  }
+
+  return department;
+}
+
+/**
+ * 공지사항 본문 생성 (마크다운 없이 깔끔하게)
  */
 function generateAnnouncementContent(
   teams: GeneratedTeam[],
-  criteriaText: string
+  _criteriaText: string
 ): string {
-  let content = `## 조 편성 결과\n\n`;
-  content += `**편성 기준**: ${criteriaText}\n\n`;
-  content += `---\n\n`;
+  const totalMembers = teams.reduce((sum, t) => sum + t.members.length, 0);
 
-  teams.forEach((team) => {
-    content += `### ${team.teamName}\n`;
-    team.members.forEach((member) => {
-      const dept = member.department ? ` (${member.department})` : "";
-      content += `- ${member.name}${dept}\n`;
+  let content = `📋 조 편성 결과\n`;
+  content += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  teams.forEach((team, index) => {
+    content += `🏷️ ${team.teamName}\n`;
+    team.members.forEach((member, memberIndex) => {
+      const rootDept = getRootDepartment(member.department);
+      const dept = rootDept ? ` - ${rootDept}` : "";
+      const bullet = memberIndex === team.members.length - 1 ? "└" : "├";
+      content += `   ${bullet} ${member.name}${dept}\n`;
     });
-    content += `\n`;
+    if (index < teams.length - 1) {
+      content += `\n`;
+    }
   });
 
-  content += `---\n\n`;
-  content += `*총 ${teams.length}개 조, ${teams.reduce((sum, t) => sum + t.members.length, 0)}명*`;
+  content += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  content += `📊 총 ${teams.length}개 조, ${totalMembers}명`;
 
   return content;
 }
