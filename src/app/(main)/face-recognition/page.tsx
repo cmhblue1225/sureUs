@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { ProfileDetailPanel } from '@/components/face-recognition/ProfileDetailP
 import { Camera, Settings, Video } from 'lucide-react';
 
 export default function FaceRecognitionPage() {
+  const router = useRouter();
   const {
     videoRef,
     canvasRef,
@@ -25,6 +27,7 @@ export default function FaceRecognitionPage() {
 
   const { resultsById, pendingIds, error: recogError } = useFaceRecognition(videoRef, trackedFaces);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigatedRef = useRef<string | null>(null); // 이미 이동한 user_id 추적
 
   useEffect(() => {
     if (!trackedFaces.length) {
@@ -36,6 +39,19 @@ export default function FaceRecognitionPage() {
       setSelectedId(trackedFaces[0].id);
     }
   }, [trackedFaces, selectedId]);
+
+  // 얼굴 인식 성공 시 자동으로 프로필 페이지로 이동
+  useEffect(() => {
+    // 인식 결과 중 성공한 것 찾기
+    for (const [, result] of Object.entries(resultsById)) {
+      if (result.recognized && result.user_id && navigatedRef.current !== result.user_id) {
+        // 중복 이동 방지
+        navigatedRef.current = result.user_id;
+        router.push(`/profile/${result.user_id}`);
+        return;
+      }
+    }
+  }, [resultsById, router]);
 
   const selectedFace = trackedFaces.find(face => face.id === selectedId) || null;
   const selectedResult = selectedFace ? resultsById[selectedFace.id] : null;
