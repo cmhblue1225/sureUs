@@ -41,11 +41,11 @@ import {
   Megaphone,
   MessageSquare,
   History,
-  User,
   Building2,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type {
   TeamGroupingResult,
   GeneratedTeam,
@@ -495,17 +495,7 @@ function TeamCard({ team }: { team: GeneratedTeam }) {
               key={member.id}
               className="flex items-center gap-2 text-sm"
             >
-              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                {member.avatarUrl ? (
-                  <img
-                    src={member.avatarUrl}
-                    alt=""
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="h-3 w-3 text-muted-foreground" />
-                )}
-              </div>
+              <UserAvatar src={member.avatarUrl} alt={member.name} size="xs" className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{member.name}</p>
                 {member.department && (
@@ -523,6 +513,15 @@ function TeamCard({ team }: { team: GeneratedTeam }) {
             </div>
           ))}
         </div>
+
+        {/* AI 구성 이유 */}
+        {team.reasoning && (
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">구성 이유:</span> {team.reasoning}
+            </p>
+          </div>
+        )}
 
         {/* 다양성 지표 */}
         <div className="mt-3 pt-3 border-t flex gap-2 text-xs text-muted-foreground">

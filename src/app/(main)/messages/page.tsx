@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, User, Loader2 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { MessageCircle, Loader2 } from "lucide-react";
 
 interface Conversation {
   id: string;
@@ -121,17 +122,12 @@ export default function MessagesPage() {
               }`}>
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      {conv.otherUser.avatar_url ? (
-                        <img
-                          src={conv.otherUser.avatar_url}
-                          alt={conv.otherUser.name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-6 h-6 text-muted-foreground" />
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={conv.otherUser.avatar_url}
+                      alt={conv.otherUser.name}
+                      size="md"
+                      className="w-12 h-12 flex-shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h3 className={`font-semibold truncate ${

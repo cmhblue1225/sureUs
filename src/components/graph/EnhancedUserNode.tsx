@@ -10,7 +10,8 @@
 import { memo, useMemo, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
-import { User, Sparkles, Star } from "lucide-react";
+import { Sparkles, Star } from "lucide-react";
+import { DEFAULT_AVATAR_URL } from "@/components/ui/user-avatar";
 import type { ClusteredNode } from "@/lib/graph/clustering";
 
 export interface EnhancedUserNodeData extends ClusteredNode {
@@ -191,15 +192,11 @@ function EnhancedUserNodeComponent({ data, selected }: EnhancedUserNodeProps) {
               `}
             >
               <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-6 h-6 text-muted-foreground" />
-                )}
+                <img
+                  src={avatarUrl || DEFAULT_AVATAR_URL}
+                  alt={name}
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
             {/* 현재 사용자 표시 */}

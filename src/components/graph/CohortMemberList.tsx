@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, User, Building2, Briefcase, Users } from "lucide-react";
+import { Search, Building2, Briefcase, Users } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { ClusteredNode } from "@/lib/graph/clustering";
 
 // RadialNetworkNode 타입 (network page에서 사용)
@@ -218,17 +219,7 @@ function MemberCard({ member, onViewProfile }: MemberCardProps) {
       <CardContent className="p-4">
         <div className="flex flex-col items-center text-center">
           {/* 아바타 */}
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden mb-3">
-            {member.avatarUrl ? (
-              <img
-                src={member.avatarUrl}
-                alt={member.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <User className="w-8 h-8 text-muted-foreground" />
-            )}
-          </div>
+          <UserAvatar src={member.avatarUrl} alt={member.name} size="lg" className="mb-3" />
 
           {/* 이름 */}
           <h3 className="font-semibold text-sm truncate w-full">{member.name}</h3>

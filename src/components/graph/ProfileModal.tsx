@@ -10,7 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, MessageCircle, MapPin, Briefcase, Building2 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { MessageCircle, MapPin, Briefcase, Building2 } from "lucide-react";
 import type { ClusteredNode } from "@/lib/graph/clustering";
 
 interface ProfileModalProps {
@@ -31,17 +32,7 @@ export function ProfileModal({ node, open, onOpenChange }: ProfileModalProps) {
 
         <div className="flex flex-col items-center text-center">
           {/* Avatar */}
-          <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden mb-4">
-            {node.avatarUrl ? (
-              <img
-                src={node.avatarUrl}
-                alt={node.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <User className="w-12 h-12 text-muted-foreground" />
-            )}
-          </div>
+          <UserAvatar src={node.avatarUrl} alt={node.name} size="xl" className="mb-4" />
 
           {/* Name & MBTI */}
           <h2 className="text-xl font-bold">{node.name}</h2>

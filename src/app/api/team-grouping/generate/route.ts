@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { checkIsAdmin } from "@/lib/utils/auth";
-import { getEffectiveCohortId, isUserAdmin } from "@/lib/utils/cohort";
-import { parseGroupingCriteria } from "@/lib/team-grouping/criteriaParser";
-import { createTeamGroupingResult } from "@/lib/team-grouping/algorithm";
+import { getEffectiveCohortId } from "@/lib/utils/cohort";
+import { generateTeamsWithAI, createAITeamGroupingResult } from "@/lib/team-grouping/aiGrouping";
 import type { TeamMember, GenerateTeamsRequest } from "@/lib/team-grouping/types";
 import type { Json } from "@/types/database";
 
@@ -138,17 +137,21 @@ export async function POST(request: Request) {
       };
     });
 
-    // Claude로 기준 파싱
-    const criteriaParsed = await parseGroupingCriteria(criteriaText);
+    // AI 기반 조 편성
+    const aiResult = await generateTeamsWithAI({
+      criteriaText,
+      teamSize,
+      members,
+    });
 
-    // 팀 생성
-    const result = createTeamGroupingResult(
+    // 결과 형식 변환
+    const result = createAITeamGroupingResult(
       cohortId,
       user.id,
       members,
       teamSize,
       criteriaText,
-      criteriaParsed
+      aiResult
     );
 
     // DB에 저장
@@ -157,7 +160,7 @@ export async function POST(request: Request) {
       .insert({
         cohort_id: cohortId,
         criteria_text: criteriaText,
-        criteria_parsed: criteriaParsed as unknown as Json,
+        criteria_parsed: result.criteriaParsed as unknown as Json,
         team_size: teamSize,
         team_count: result.teamCount,
         teams_json: result.teams as unknown as Json,
@@ -182,8 +185,14 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Team grouping generate error:", error);
+
+    // AI 조 편성 실패 시 에러 메시지 반환 (폴백 없음)
+    const errorMessage = error instanceof Error
+      ? error.message
+      : "AI 조 편성에 실패했습니다. 다시 시도해주세요.";
+
     return NextResponse.json(
-      { success: false, error: "조 편성 중 오류가 발생했습니다." },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

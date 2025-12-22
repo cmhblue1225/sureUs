@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, User, Loader2 } from "lucide-react";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -203,17 +204,11 @@ export default function ChatPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Link href={`/profile/${conversation.otherUser.id}`} className="flex items-center gap-3 flex-1">
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            {conversation.otherUser.avatar_url ? (
-              <img
-                src={conversation.otherUser.avatar_url}
-                alt={conversation.otherUser.name}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              <User className="w-5 h-5 text-muted-foreground" />
-            )}
-          </div>
+          <UserAvatar
+            src={conversation.otherUser.avatar_url}
+            alt={conversation.otherUser.name}
+            size="md"
+          />
           <div>
             <h2 className="font-semibold">{conversation.otherUser.name}</h2>
             {conversation.otherUser.department && (

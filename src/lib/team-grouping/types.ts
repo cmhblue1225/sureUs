@@ -56,6 +56,7 @@ export interface GeneratedTeam {
     locationCount: number;        // 서로 다른 지역 수
   };
   averageSimilarity?: number;     // 팀 내 평균 유사도 (선택)
+  reasoning?: string;             // AI가 생성한 팀 구성 이유
 }
 
 // 조 편성 결과

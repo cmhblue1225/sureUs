@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -172,12 +172,12 @@ export default function DashboardPage() {
         <Card className="col-span-12 md:col-span-6 lg:col-span-3">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
-              <Avatar className="w-20 h-20 mb-3 ring-4 ring-primary/10">
-                <AvatarImage src={data.userAvatar || undefined} />
-                <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                  {data.userName?.charAt(0) || "?"}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                src={data.userAvatar}
+                alt={data.userName}
+                size="xl"
+                className="mb-3 ring-4 ring-primary/10"
+              />
               <h2 className="text-lg font-bold">{data.userName}</h2>
               {(data.department || data.jobRole) && (
                 <p className="text-sm text-muted-foreground">

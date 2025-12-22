@@ -2,7 +2,74 @@
 
 > 마지막 업데이트: 2025-12-22
 
-## 현재 Phase: 24 완료 (기수 동료 리스트 탭)
+## 현재 Phase: 26 완료 (기본 아바타 이미지)
+
+---
+
+## Phase 26: 기본 아바타 이미지
+**상태: 완료**
+
+### 목표
+프로필 사진이 없는 사용자에게 기본 아바타 이미지(favicon.ico) 표시
+
+### 26-1. UserAvatar 컴포넌트 생성
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| UserAvatar 컴포넌트 생성 | ✅ 완료 | `src/components/ui/user-avatar.tsx` |
+| DEFAULT_AVATAR_URL 상수 정의 | ✅ 완료 | `src/components/ui/user-avatar.tsx` |
+
+### 26-2. 컴포넌트 업데이트
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| Header 아바타 수정 | ✅ 완료 | `src/components/layout/Header.tsx` |
+| ProfileModal 아바타 수정 | ✅ 완료 | `src/components/graph/ProfileModal.tsx` |
+| TeamGroupingPanel 아바타 수정 | ✅ 완료 | `src/components/graph/TeamGroupingPanel.tsx` |
+| EnhancedUserNode 아바타 수정 | ✅ 완료 | `src/components/graph/EnhancedUserNode.tsx` |
+| CohortMemberList 아바타 수정 | ✅ 완료 | `src/components/graph/CohortMemberList.tsx` |
+| Dashboard 아바타 수정 | ✅ 완료 | `src/app/(main)/dashboard/page.tsx` |
+| Messages 아바타 수정 | ✅ 완료 | `src/app/(main)/messages/page.tsx` |
+| Messages Detail 아바타 수정 | ✅ 완료 | `src/app/(main)/messages/[id]/page.tsx` |
+
+### 기능 요약
+- **UserAvatar 컴포넌트**: 재사용 가능한 아바타 컴포넌트
+- **기본 이미지**: `/favicon.ico`를 기본 아바타로 사용
+- **사이즈 옵션**: xs(24px), sm(32px), md(40px), lg(64px), xl(96px)
+
+### 신규 파일
+| 파일 | 용도 |
+|------|------|
+| `src/components/ui/user-avatar.tsx` | 재사용 가능한 아바타 컴포넌트 |
+
+---
+
+## 현재 Phase: 25 완료 (AI 기반 조 편성)
+
+---
+
+## Phase 25: AI 기반 조 편성
+**상태: 완료**
+
+### 목표
+기존 규칙 기반 알고리즘을 Claude AI 기반으로 전환하여 조 편성 품질 향상
+
+### 25-1. AI 조 편성 구현
+| 작업 | 상태 | 파일 |
+|------|------|------|
+| GeneratedTeam 타입에 reasoning 필드 추가 | ✅ 완료 | `src/lib/team-grouping/types.ts` |
+| AI 조 편성 모듈 생성 | ✅ 완료 | `src/lib/team-grouping/aiGrouping.ts` |
+| generate route AI 호출로 변경 | ✅ 완료 | `src/app/api/team-grouping/generate/route.ts` |
+| 팀 카드에 reasoning 표시 | ✅ 완료 | `src/components/graph/TeamGroupingPanel.tsx` |
+
+### 기능 요약
+- **AI 조 편성**: Claude가 멤버 정보와 기준을 분석하여 최적 팀 구성
+- **구성 이유**: 각 팀별로 왜 이렇게 구성했는지 설명 제공
+- **폴백 없음**: AI 실패 시 에러 반환 (규칙 기반 폴백 제거)
+- **관리자 제외**: admin@test.com 및 role='admin' 사용자 제외
+
+### 신규 파일
+| 파일 | 용도 |
+|------|------|
+| `src/lib/team-grouping/aiGrouping.ts` | Claude API 기반 조 편성 로직 |
 
 ---
 

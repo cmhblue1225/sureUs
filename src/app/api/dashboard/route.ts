@@ -160,7 +160,8 @@ export async function GET() {
       .eq("profile_id", profile?.id || "");
 
     const hobbyCount = userTags?.length || 0;
-    const profileCompletion = calculateProfileCompletion(profile, hobbyCount);
+    // 관리자는 프로필 완성도를 표시하지 않음
+    const profileCompletion = isAdmin ? null : calculateProfileCompletion(profile, hobbyCount);
 
     const userName = profile?.users?.name || "사용자";
     const userAvatar = profile?.users?.avatar_url || null;
