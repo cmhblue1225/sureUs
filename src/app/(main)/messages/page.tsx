@@ -114,7 +114,7 @@ export default function MessagesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {conversations.map((conv) => (
             <Link key={conv.id} href={`/messages/${conv.id}`}>
               <Card className={`hover:bg-muted/50 transition-colors cursor-pointer ${

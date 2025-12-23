@@ -171,7 +171,7 @@ export default function BoardPage() {
           </Link>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {posts.map((post) => {
             const TypeIcon = postTypeIcons[post.post_type];
             return (

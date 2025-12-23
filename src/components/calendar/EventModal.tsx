@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -50,6 +51,7 @@ interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: CalendarEvent | null;
+  defaultDate?: Date | null;
   onSave: () => void;
   onDelete: () => void;
   userRole: "admin" | "user";
@@ -68,6 +70,7 @@ export function EventModal({
   isOpen,
   onClose,
   event,
+  defaultDate,
   onSave,
   onDelete,
   userRole,
@@ -99,19 +102,25 @@ export function EventModal({
       setLocation(event.location || "");
       setColor(event.color || "#3B82F6");
     } else {
-      // 새 이벤트 기본값
-      const now = new Date();
-      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      // 새 이벤트 기본값 - defaultDate가 있으면 사용
+      const baseDate = defaultDate || new Date();
+      const startTime = new Date(baseDate);
+      // defaultDate가 있으면 해당 날짜의 9시로 설정
+      if (defaultDate) {
+        startTime.setHours(9, 0, 0, 0);
+      }
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
       setTitle("");
       setDescription("");
-      setStartDate(formatDateTimeLocal(now.toISOString()));
-      setEndDate(formatDateTimeLocal(oneHourLater.toISOString()));
+      setStartDate(formatDateTimeLocal(startTime.toISOString()));
+      setEndDate(formatDateTimeLocal(endTime.toISOString()));
       setAllDay(false);
       setEventType("personal");
       setLocation("");
       setColor("#3B82F6");
     }
-  }, [event, isOpen]);
+  }, [event, defaultDate, isOpen]);
 
   function formatDateTimeLocal(dateStr: string): string {
     const date = new Date(dateStr);
@@ -197,6 +206,9 @@ export function EventModal({
             <DialogTitle>
               {isEditing ? "일정 수정" : "새 일정 추가"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {isEditing ? "선택한 일정을 수정합니다." : "새로운 일정을 추가합니다."}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">

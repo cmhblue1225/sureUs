@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const eventType = searchParams.get("eventType"); // training | personal | all
+    const search = searchParams.get("search"); // 검색어
 
     // 현재 사용자의 기수 ID 가져오기
     const isAdmin = await isUserAdmin(supabase, user.id);
@@ -64,6 +65,14 @@ export async function GET(request: NextRequest) {
       // all: training은 기수별, personal은 본인 것만
       query = query.or(
         `and(event_type.eq.training,cohort_id.eq.${cohortId}),and(event_type.eq.personal,user_id.eq.${user.id})`
+      );
+    }
+
+    // 검색 필터
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      query = query.or(
+        `title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`
       );
     }
 

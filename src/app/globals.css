@@ -305,3 +305,207 @@ body {
 .search-zone {
   transition: all 0.3s ease-out;
 }
+
+/* =================================
+   FullCalendar Custom Styles
+   ================================= */
+
+.fc-wrapper {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: transparent;
+  --fc-button-border-color: hsl(var(--border));
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  --fc-button-hover-border-color: hsl(var(--border));
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-border-color: hsl(var(--primary));
+  --fc-today-bg-color: hsl(var(--primary) / 0.08);
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+  --fc-highlight-color: hsl(var(--primary) / 0.12);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-list-event-hover-bg-color: hsl(var(--accent));
+}
+
+/* Calendar Container */
+.fc {
+  font-family: inherit;
+}
+
+/* Header Cells */
+.fc .fc-col-header-cell {
+  padding: 12px 0;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--card));
+}
+
+.fc .fc-col-header-cell-cushion {
+  padding: 8px;
+}
+
+/* Day Grid Cells */
+.fc .fc-daygrid-day {
+  transition: background-color 0.2s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background-color: hsl(var(--accent) / 0.5);
+}
+
+.fc .fc-daygrid-day-top {
+  padding: 8px;
+}
+
+.fc .fc-daygrid-day-number {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 9999px;
+}
+
+/* Today Highlight */
+.fc .fc-day-today .fc-daygrid-day-number {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Weekend Styling */
+.fc .fc-day-sat,
+.fc .fc-day-sun {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Events */
+.fc .fc-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-width: 0;
+  border-left-width: 3px;
+}
+
+.fc .fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fc .fc-daygrid-event {
+  margin: 1px 4px;
+}
+
+/* Event Type Styles */
+.fc .fc-event-training {
+  background-color: #3B82F6 !important;
+  border-left-color: #1D4ED8 !important;
+}
+
+.fc .fc-event-personal {
+  background-color: #22C55E !important;
+  border-left-color: #15803D !important;
+}
+
+/* Time Grid Styles */
+.fc .fc-timegrid-slot {
+  height: 48px;
+}
+
+.fc .fc-timegrid-slot-label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.fc .fc-timegrid-axis {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.fc .fc-timegrid-event {
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+/* Now Indicator */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: hsl(var(--destructive));
+  border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: hsl(var(--destructive));
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
+
+/* All Day Section */
+.fc .fc-daygrid-day-frame {
+  min-height: 120px;
+}
+
+.fc .fc-timegrid-divider {
+  padding: 0;
+  border-color: hsl(var(--border));
+}
+
+/* More Link */
+.fc .fc-daygrid-more-link {
+  font-size: 0.75rem;
+  color: hsl(var(--primary));
+  font-weight: 500;
+  padding: 2px 4px;
+  margin: 1px 4px;
+}
+
+.fc .fc-daygrid-more-link:hover {
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 4px;
+}
+
+/* Popover */
+.fc .fc-popover {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.fc .fc-popover-header {
+  background: hsl(var(--muted));
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+/* Scrollbar for Time Grid */
+.fc .fc-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  .fc .fc-event:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .fc .fc-day-sat,
+  .fc .fc-day-sun {
+    background-color: hsl(var(--muted) / 0.2);
+  }
+}

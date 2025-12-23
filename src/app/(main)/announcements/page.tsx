@@ -187,7 +187,7 @@ export default function AnnouncementsPage() {
           <p className="text-muted-foreground">공지사항이 없습니다.</p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredAnnouncements.map((announcement) => (
             <Link
               key={announcement.id}
