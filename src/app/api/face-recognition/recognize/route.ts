@@ -58,6 +58,7 @@ export async function POST(request: Request) {
 
     const result = await response.json();
     console.log('[Recognize] Response:', JSON.stringify(result));
+    console.log('[Recognize] recognized:', result.recognized, 'user_id:', result.user_id, 'external_key:', result.external_key);
     return NextResponse.json(result);
 
   } catch (error: unknown) {

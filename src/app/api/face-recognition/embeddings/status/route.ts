@@ -46,10 +46,21 @@ export async function GET() {
     }
 
     // Create a map of external_key (user_id) to updated_at
-    // Only include records where embedding actually exists (not null and has values)
+    // Only include records where embedding actually exists (not null)
+    // Note: embedding can be stored as a string (JSON) or array depending on DB type
     const embeddingMap = new Map(
       identities
-        ?.filter(e => e.embedding !== null && Array.isArray(e.embedding) && e.embedding.length > 0)
+        ?.filter(e => {
+          if (e.embedding === null || e.embedding === undefined) return false;
+          // Check if it's a non-empty string (JSON format) or a non-empty array
+          if (typeof e.embedding === 'string') {
+            return e.embedding.length > 2; // More than "[]"
+          }
+          if (Array.isArray(e.embedding)) {
+            return e.embedding.length > 0;
+          }
+          return false;
+        })
         .map(e => [e.external_key, e.updated_at]) || []
     );
 
