@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { MessageCircle, Loader2 } from "lucide-react";
+import { UserSelectPanel } from "@/components/messages/UserSelectPanel";
+import { MessageCircle, Loader2, Plus } from "lucide-react";
 
 interface Conversation {
   id: string;
@@ -29,6 +31,7 @@ export default function MessagesPage() {
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUserSelect, setShowUserSelect] = useState(false);
 
   // Handle "to" query param for starting new conversation
   useEffect(() => {
@@ -55,23 +58,53 @@ export default function MessagesPage() {
     }
   };
 
+  const fetchConversations = useCallback(async () => {
+    try {
+      const response = await fetch("/api/conversations");
+      const data = await response.json();
+      if (data.success) {
+        setConversations(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch conversations:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchConversations = async () => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Handle multiple user selection for new conversations
+  const handleSendToMultiple = async (userIds: string[]) => {
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const userId of userIds) {
       try {
-        const response = await fetch("/api/conversations");
+        const response = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ otherUserId: userId }),
+        });
         const data = await response.json();
         if (data.success) {
-          setConversations(data.data);
+          successCount++;
+        } else {
+          console.error(`Failed to create conversation with ${userId}:`, data.error);
+          errorCount++;
         }
       } catch (error) {
-        console.error("Failed to fetch conversations:", error);
-      } finally {
-        setLoading(false);
+        console.error(`Error creating conversation with ${userId}:`, error);
+        errorCount++;
       }
-    };
+    }
 
-    fetchConversations();
-  }, []);
+    console.log(`Conversations created: ${successCount} success, ${errorCount} failed`);
+    // Refresh conversation list
+    await fetchConversations();
+  };
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return "";
@@ -98,10 +131,22 @@ export default function MessagesPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">메시지</h1>
-        <p className="text-muted-foreground mt-1">동료와 대화하세요</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">메시지</h1>
+          <p className="text-muted-foreground mt-1">동료와 대화하세요</p>
+        </div>
+        <Button onClick={() => setShowUserSelect(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          새 대화
+        </Button>
       </div>
+
+      <UserSelectPanel
+        open={showUserSelect}
+        onOpenChange={setShowUserSelect}
+        onSelect={handleSendToMultiple}
+      />
 
       {conversations.length === 0 ? (
         <Card>

@@ -52,12 +52,14 @@ export async function GET() {
       identities
         ?.filter(e => {
           if (e.embedding === null || e.embedding === undefined) return false;
+          // Cast to unknown first to handle both string and array types from Supabase
+          const embedding = e.embedding as unknown;
           // Check if it's a non-empty string (JSON format) or a non-empty array
-          if (typeof e.embedding === 'string') {
-            return e.embedding.length > 2; // More than "[]"
+          if (typeof embedding === 'string') {
+            return embedding.length > 2; // More than "[]"
           }
-          if (Array.isArray(e.embedding)) {
-            return e.embedding.length > 0;
+          if (Array.isArray(embedding)) {
+            return embedding.length > 0;
           }
           return false;
         })

@@ -136,15 +136,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 같은 기수인지 확인
-    const sameCoho = await isSameCohort(supabase, user.id, otherUserId);
-    if (!sameCoho) {
-      return NextResponse.json(
-        { success: false, error: "같은 기수의 사용자에게만 메시지를 보낼 수 있습니다." },
-        { status: 400 }
-      );
-    }
-
     // 현재 사용자의 기수 ID 가져오기
     const isAdmin = await isUserAdmin(supabase, user.id);
     const cohortId = await getEffectiveCohortId(supabase, user.id, isAdmin);
@@ -154,6 +145,32 @@ export async function POST(request: Request) {
         { success: false, error: "기수가 선택되지 않았습니다." },
         { status: 400 }
       );
+    }
+
+    // 같은 기수인지 확인 - 관리자는 선택한 기수 기준으로 확인
+    if (isAdmin) {
+      // 관리자인 경우: 상대방이 선택된 기수에 속하는지 확인
+      const { data: otherProfile } = await supabase
+        .from("profiles")
+        .select("cohort_id")
+        .eq("user_id", otherUserId)
+        .single();
+
+      if (!otherProfile || otherProfile.cohort_id !== cohortId) {
+        return NextResponse.json(
+          { success: false, error: "선택된 기수의 사용자에게만 메시지를 보낼 수 있습니다." },
+          { status: 400 }
+        );
+      }
+    } else {
+      // 일반 사용자인 경우: 기존 isSameCohort 로직 사용
+      const sameCoho = await isSameCohort(supabase, user.id, otherUserId);
+      if (!sameCoho) {
+        return NextResponse.json(
+          { success: false, error: "같은 기수의 사용자에게만 메시지를 보낼 수 있습니다." },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if conversation already exists
