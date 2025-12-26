@@ -82,16 +82,16 @@ src/
 
 ### 핵심 시스템
 
-**매칭 알고리즘 (7요소)**
+**매칭 알고리즘 (7요소)** - [상세 문서](docs/matching.md)
 | 요소 | 가중치 | 파일 |
 |------|--------|------|
-| 임베딩 유사도 | 25% | `lib/matching/algorithm.ts` |
-| 취미 태그 | 20% | Jaccard 유사도 |
-| MBTI 궁합 | 15% | `lib/matching/mbtiCompatibility.ts` |
-| 직군 유사도 | 15% | `lib/matching/jobRoleScoring.ts` |
-| 부서 관계 | 10% | `lib/matching/departmentScoring.ts` |
-| 지역 근접성 | 10% | `lib/matching/locationScoring.ts` |
-| 선호도 | 5% | 사용자 설정 |
+| 임베딩 유사도 | 30% | `lib/matching/enhancedAlgorithm.ts` |
+| 취미 태그 | 25% | Jaccard 유사도 |
+| MBTI 궁합 | 12% | `lib/matching/mbtiCompatibility.ts` |
+| 직군 유사도 | 10% | `lib/matching/jobRoleScoring.ts` |
+| 부서 관계 | 8% | `lib/matching/departmentScoring.ts` |
+| 지역 근접성 | 5% | `lib/matching/locationScoring.ts` |
+| 선호도 | 10% | 사용자 설정 |
 
 **기수(Cohort) 시스템**
 - 모든 데이터는 `cohort_id`로 완전 격리

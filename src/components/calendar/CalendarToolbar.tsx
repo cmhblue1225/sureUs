@@ -99,10 +99,10 @@ export function CalendarToolbar({
     <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
       {/* Navigation and Title */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={handlePrev}>
+        <Button variant="outline" size="icon" onClick={handlePrev} aria-label="이전">
           <ChevronLeft className="w-4 h-4" />
         </Button>
-        <Button variant="outline" size="icon" onClick={handleNext}>
+        <Button variant="outline" size="icon" onClick={handleNext} aria-label="다음">
           <ChevronRight className="w-4 h-4" />
         </Button>
         <Button variant="outline" onClick={onToday}>

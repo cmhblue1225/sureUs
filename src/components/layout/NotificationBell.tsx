@@ -135,9 +135,13 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-lg shadow-lg z-50">
+        <div
+          role="menu"
+          aria-label="알림 목록"
+          className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-lg shadow-lg z-50"
+        >
           <div className="flex items-center justify-between p-3 border-b">
-            <h3 className="font-semibold">알림</h3>
+            <h3 id="notification-title" className="font-semibold">알림</h3>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"

@@ -146,12 +146,6 @@ export async function GET(
     // Get common tags if current user has a profile
     let commonTags: string[] = [];
     if (currentUserProfile && !isOwnProfile) {
-      const { data: currentUserTags } = await supabase
-        .from("profile_tags")
-        .select("tag_name")
-        .eq("profile_id", currentUserProfile.department); // This won't work - need profile_id
-
-      // Actually need to get current user's profile first
       const { data: currentProfile } = await supabase
         .from("profiles")
         .select("id")

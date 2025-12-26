@@ -40,7 +40,7 @@ export function CohortCard({
             )}
           </CardTitle>
           <Link href={`/admin/cohorts/${id}`}>
-            <Button variant="ghost" size="icon" title="기수 관리">
+            <Button variant="ghost" size="icon" title="기수 관리" aria-label="기수 관리">
               <Settings className="w-4 h-4" />
             </Button>
           </Link>
@@ -72,6 +72,7 @@ export function CohortCard({
               disabled={userCount > 0}
               className="text-destructive hover:text-destructive"
               title={userCount > 0 ? "사용자가 있어 삭제할 수 없습니다" : "삭제"}
+              aria-label={userCount > 0 ? "사용자가 있어 삭제할 수 없습니다" : "삭제"}
             >
               <Trash2 className="w-4 h-4" />
             </Button>

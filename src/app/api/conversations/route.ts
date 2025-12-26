@@ -43,55 +43,78 @@ export async function GET() {
       );
     }
 
-    // Get other participants' info and unread counts
-    const conversationsWithDetails = await Promise.all(
-      (conversations || []).map(async (conv: {
-        id: string;
-        participant_1: string;
-        participant_2: string;
-        last_message_at: string;
-        created_at: string;
-      }) => {
-        const otherUserId = conv.participant_1 === user.id
-          ? conv.participant_2
-          : conv.participant_1;
+    // Batch fetch optimization to avoid N+1 queries
+    const convList = (conversations || []) as Array<{
+      id: string;
+      participant_1: string;
+      participant_2: string;
+      last_message_at: string;
+      created_at: string;
+    }>;
 
-        // Get other user info
-        const { data: otherUser } = await supabase
-          .from("users")
-          .select("id, name, avatar_url")
-          .eq("id", otherUserId)
-          .single();
+    if (convList.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
+    }
 
-        // Get unread count
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { count: unreadCount } = await (supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", conv.id)
-          .eq("read", false)
-          .neq("sender_id", user.id) as any);
-
-        // Get last message
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: lastMessage } = await (supabase
-          .from("messages")
-          .select("content, sender_id, created_at")
-          .eq("conversation_id", conv.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single() as any);
-
-        return {
-          id: conv.id,
-          otherUser: otherUser || { id: otherUserId, name: "알 수 없음" },
-          lastMessage: lastMessage || null,
-          unreadCount: unreadCount || 0,
-          lastMessageAt: conv.last_message_at,
-          createdAt: conv.created_at,
-        };
-      })
+    // Extract all other user IDs
+    const otherUserIds = convList.map(conv =>
+      conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1
     );
+    const conversationIds = convList.map(conv => conv.id);
+
+    // Batch fetch all users in one query
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name, avatar_url")
+      .in("id", otherUserIds);
+
+    const userMap = new Map(
+      (users || []).map((u: { id: string; name: string; avatar_url: string | null }) => [u.id, u])
+    );
+
+    // Batch fetch last messages for all conversations (including read status for unread count)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: allMessages } = await (supabase
+      .from("messages")
+      .select("conversation_id, content, sender_id, created_at, read")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false }) as any);
+
+    // Group messages by conversation and get the latest one
+    const lastMessageMap = new Map<string, { content: string; sender_id: string; created_at: string }>();
+    for (const msg of (allMessages || [])) {
+      if (!lastMessageMap.has(msg.conversation_id)) {
+        lastMessageMap.set(msg.conversation_id, {
+          content: msg.content,
+          sender_id: msg.sender_id,
+          created_at: msg.created_at,
+        });
+      }
+    }
+
+    // Count unread messages per conversation (messages not sent by current user and not read)
+    const unreadCountMap = new Map<string, number>();
+    for (const msg of (allMessages || [])) {
+      if (msg.sender_id !== user.id && msg.read === false) {
+        unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
+      }
+    }
+
+    // Build the response
+    const conversationsWithDetails = convList.map(conv => {
+      const otherUserId = conv.participant_1 === user.id
+        ? conv.participant_2
+        : conv.participant_1;
+
+      return {
+        id: conv.id,
+        otherUser: userMap.get(otherUserId) || { id: otherUserId, name: "알 수 없음" },
+        lastMessage: lastMessageMap.get(conv.id) || null,
+        unreadCount: unreadCountMap.get(conv.id) || 0,
+        lastMessageAt: conv.last_message_at,
+        createdAt: conv.created_at,
+      };
+    });
 
     return NextResponse.json({
       success: true,

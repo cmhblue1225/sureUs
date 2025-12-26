@@ -180,6 +180,7 @@ export function Sidebar() {
         <button
           onClick={handleLogout}
           title={isCollapsed ? "로그아웃" : undefined}
+          aria-label="로그아웃"
           className={cn(
             "flex items-center text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-all duration-300 ease-in-out overflow-hidden",
             isCollapsed ? "w-10 h-10 justify-center p-0" : "py-2 px-3 w-full"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Message {
   id: string;
@@ -39,9 +40,12 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const supabaseRef = useRef(createClient());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,27 +93,102 @@ export default function ChatPage() {
     }
   }, [conversationId, router]);
 
-  // Poll for new messages
+  // Broadcast typing status
+  const broadcastTyping = useCallback((isTyping: boolean) => {
+    if (!currentUserId) return;
+
+    const channel = supabaseRef.current.channel(`typing:${conversationId}`);
+    channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { userId: currentUserId, isTyping },
+    });
+  }, [conversationId, currentUserId]);
+
+  // Handle input change with typing indicator
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+
+    // Broadcast typing start
+    broadcastTyping(true);
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      broadcastTyping(false);
+    }, 2000);
+  }, [broadcastTyping]);
+
+  // Subscribe to real-time messages and typing indicator
   useEffect(() => {
-    const pollMessages = async () => {
-      try {
-        const response = await fetch(`/api/conversations/${conversationId}/messages`);
-        const data = await response.json();
-        if (data.success) {
-          setMessages(data.data.messages);
+    if (!currentUserId) return;
+
+    const supabase = supabaseRef.current;
+
+    // Subscribe to new messages in this conversation
+    const messagesChannel = supabase
+      .channel(`messages:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          // Only add if not already in the list (avoid duplicates from optimistic updates)
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) {
+              return prev;
+            }
+            // Also replace any temp messages with matching content if they exist
+            const filtered = prev.filter(
+              (m) => !m.id.startsWith("temp-") || m.content !== newMsg.content
+            );
+            return [...filtered, newMsg];
+          });
+          // When message is received, clear typing indicator
+          setIsOtherTyping(false);
         }
-      } catch (error) {
-        console.error("Poll error:", error);
+      )
+      .subscribe();
+
+    // Subscribe to typing indicator
+    const typingChannel = supabase
+      .channel(`typing:${conversationId}`)
+      .on("broadcast", { event: "typing" }, (payload) => {
+        const { userId, isTyping } = payload.payload as { userId: string; isTyping: boolean };
+        // Only show typing if it's from the other user
+        if (userId !== currentUserId) {
+          setIsOtherTyping(isTyping);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(typingChannel);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
       }
     };
-
-    const interval = setInterval(pollMessages, 5000);
-    return () => clearInterval(interval);
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
+
+    // Stop typing indicator
+    broadcastTyping(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
 
     setSending(true);
     const content = newMessage.trim();
@@ -200,7 +279,7 @@ export default function ChatPage() {
     <div className="max-w-2xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 pb-4 border-b">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/messages")}>
+        <Button variant="ghost" size="icon" onClick={() => router.push("/messages")} aria-label="뒤로 가기">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Link href={`/profile/${conversation.otherUser.id}`} className="flex items-center gap-3 flex-1">
@@ -267,18 +346,30 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Typing Indicator */}
+      {isOtherTyping && (
+        <div className="px-2 py-1 text-xs text-muted-foreground flex items-center gap-1">
+          <span className="flex gap-0.5">
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </span>
+          <span>{conversation?.otherUser.name}님이 입력 중...</span>
+        </div>
+      )}
+
       {/* Input */}
       <Card className="p-2">
         <form onSubmit={handleSend} className="flex gap-2">
           <Input
             ref={inputRef}
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             placeholder="메시지를 입력하세요..."
             className="flex-1"
             disabled={sending}
           />
-          <Button type="submit" size="icon" disabled={!newMessage.trim() || sending}>
+          <Button type="submit" size="icon" disabled={!newMessage.trim() || sending} aria-label="메시지 전송">
             {sending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
